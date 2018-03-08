@@ -1,0 +1,496 @@
+package main
+
+import (
+	"bufio"
+	"flag"
+	"fmt"
+	"io"
+	"log"
+	"net/http"
+	"os"
+	"regexp"
+	"strings"
+)
+
+/*
+Purpose: Dynamically push the dataset into Logstash. This program runs on the Logstash container instance
+Author: Raj Krishnamurthy
+Parameters, in default order:
+	a. -dataset : Source Dataset Location. An HTTP URL or a fully qualified file path for dataset
+	b. -conf: Source Logstash Configuration File. An HTTP URL or a fully qualified file path for Logstash.conf
+	c. -eserver: Elastic Server Info. Name or IP address of the elastic server and port name [format: <server ip/name>:<port>]
+	d. (optional) -inputyaml: An HTTP URL or a fully qualified file path for YAML
+
+Output:
+
+Outline of Steps:
+Step1: Setup a "Flag" Infrastructure
+Step2: Parse Flags for Source URL/Filepath
+Step3: Valdate Flags & Exception Handling
+Step4: Fetch Source Files: Dataset and Config
+Step5: Parse and Update Configuration file with ElasticSearch Server
+Step6: Set Environment Variables
+Step7: Run Logstash
+
+References:
+Using Flags: https://gobyexample.com/command-line-flags
+File Download: https://github.com/thbar/golang-playground/blob/master/download-files.go
+Fetch https: https://stackoverflow.com/questions/12122159/golang-how-to-do-a-https-request-with-bad-certificate
+
+Commandline: Example: ./Lesson15-ELK-Logstash.exe -dataset="http://dataset" -conf="http://conf" 1 2 3
+./Lesson15-ELK-Logstash.exe -dataset="https://data.cityofnewyork.us/api/views/h9gi-nx95/rows.csv" -conf="https://raw.githubusercontent.com/rajkrishnamurthy/examples/master/Exploring%20Public%20Datasets/nyc_traffic_accidents/nyc_collision_logstash.conf"
+
+
+*/
+type paramstype map[string]interface{}
+
+// Step2
+//This function will take the "flags" array as input parameter and return a map w/ parsed output
+func assignFlags(pFlags [][]string) paramstype {
+	//pFlags is a 2D, n x 5 array with
+	//	a. [0] = Flag Name
+	//	b. [1] = Flag Default Value
+	//	c. [2] = Flag Description
+	//	d. [3] = Download Flag
+	//	e. [4] = Save File As
+
+	tempparmnames := make(paramstype)
+
+	for _, pkey := range pFlags {
+		// Initialize all Inteface{} values to nil
+		tempparmnames[pkey[0]] = flag.String(pkey[0], pkey[1], pkey[2])
+	}
+
+	flag.Parse()
+
+	//case "args": Args() is assigned post Parse()
+	tempparmnames["args"] = flag.Args()
+
+	return tempparmnames
+
+}
+
+//Step4-a
+//This function takes a Slice of all files that need to be fetched, temp disk location and returns error, if any
+func fetchFiles(paramflags paramstype, paramlist [][]string) bool {
+	//TODO : Error Handling
+	//TODO : Output file/path override
+	var tempfetchlist [][]string
+
+	{
+		var downloadfile, savefileas string
+		var flagvalueindex = 0
+		var downloadflagindex = 3
+		var savefileasindex = 4
+
+		var temp1xd []string
+
+		{
+			for _, pvalue := range paramlist {
+				downloadfile = ""
+				if strings.Contains(strings.ToLower(pvalue[downloadflagindex]), "download") {
+					downloadfile = strings.TrimSpace(*paramflags[pvalue[flagvalueindex]].(*string))
+					savefileas = strings.TrimSpace(pvalue[savefileasindex])
+					if downloadfile != "" {
+						temp1xd = []string{downloadfile, savefileas}
+						//add file to tempfetchlist
+						tempfetchlist = append(tempfetchlist, temp1xd)
+					}
+				}
+
+			}
+		}
+		{
+			for _, pvalue := range tempfetchlist {
+				downloadFromURL(pvalue[0], pvalue[1])
+			}
+		}
+	}
+	return true
+}
+
+//Step4-b
+func downloadFromURL(url string, outputfile string) bool {
+	tokens := strings.Split(url, "/")
+	fileName := tokens[len(tokens)-1]
+	fmt.Println("Downloading", url, "to", fileName)
+
+	if strings.TrimSpace(outputfile) != "" {
+		fileName = outputfile
+	}
+
+	// TODO: check file existence first with io.IsExist
+	output, err := os.Create(fileName)
+	if err != nil {
+		fmt.Println("Error while creating", fileName, "-", err)
+		return false
+	}
+	defer output.Close()
+
+	//tr := http.DefaultTransport.(*http.Transport)
+	//tr.TLSClientConfig.InsecureSkipVerify = true
+
+	response, err := http.Get(url)
+	if err != nil {
+		fmt.Println("Error while downloading", url, "-", err)
+		log.Fatal(err)
+		return false
+	}
+	defer response.Body.Close()
+
+	n, err := io.Copy(output, response.Body)
+	if err != nil {
+		fmt.Println("Error while downloading", url, "-", err)
+		return false
+	}
+
+	fmt.Println(n, "bytes downloaded.")
+	return true
+}
+
+//Step-5a
+//This function is to Parse and Update .conf File with Elastic Server Info
+func parseSectionFile(filehandle string, section string, findexpression string, replaceline string, modsectionfile string) (rretval bool, rfindmatch bool, rfindloc int, roffsetbytes int64, rtotalbytes int64, rlinecount int, rsectionstart int, rsectionend int) {
+	//Don't ridicule me for not writing a RegEx or os.exec sed'/s/s'. I hate these commands!!
+	//filesizelimit variable is used to determine if we need to load the file into memory iotuil.Read or use the os. buffer
+	var filesizelimit = 10.0
+	var tempfilename = modsectionfile //"newsectionfile"
+	var insideelasticsearch, findmatch = false, false
+	var totalbyteswritten, offsetbytes int64
+	linecount, sectionstart, sectionend, findloc := 0, 0, 0, 0
+
+	regx := regexp.MustCompile(findexpression)
+	//Expression = "hosts.*=>\\[.*\\]", produces hosts => "[localhost:9200]""
+
+	finfo, err := os.Stat(filehandle)
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	if float64(finfo.Size())/1024.0 < filesizelimit {
+		fr, err := os.Open(filehandle)
+		if err != nil {
+			log.Fatal(err)
+		}
+		defer fr.Close()
+		frscanner := bufio.NewScanner(fr)
+
+		fw, err := os.Create(tempfilename)
+		if err != nil {
+			log.Fatal(err)
+		}
+		defer fw.Close()
+		fwwriter := bufio.NewWriter(fw)
+
+		sectionstart++
+		sectionend++
+		offsetbytes++
+
+		for frscanner.Scan() {
+			readline := strings.TrimRight(frscanner.Text(), " ")
+			bytesw, werr := fwwriter.WriteString(readline + " \n")
+			if werr != nil {
+				log.Fatal(werr)
+			}
+			linecount++
+			totalbyteswritten = totalbyteswritten + int64(bytesw)
+			if len(readline) > 0 {
+				//section = elasticsearch
+				if strings.Contains(strings.ToLower(readline), section) {
+					insideelasticsearch = true
+					if strings.Contains(readline, "{") {
+						sectionstart = linecount
+						offsetbytes = totalbyteswritten
+					}
+					continue
+				}
+
+				if insideelasticsearch {
+					if strings.Contains(readline, "{") {
+						sectionstart = linecount
+						offsetbytes = totalbyteswritten
+					}
+
+					if strings.Contains(readline, findexpression) {
+						findloc = linecount
+						findmatch = true
+						offsetbytes = totalbyteswritten
+					}
+
+					if strings.Contains(readline, "}") {
+						sectionend = linecount
+						//insideelasticsearch = false
+					}
+
+				}
+
+				//fmt.Printf("Line #: %d -- Text: %s \n", linecount, readline)
+			}
+		}
+		fwwriter.Flush()
+
+	} else {
+	}
+
+	//fmt.Printf("File Size %v", float64(finfo.Size())/1024.0)
+	return insideelasticsearch, findmatch, findloc, offsetbytes, totalbyteswritten, linecount, sectionstart, sectionend
+}
+
+//Step-5b
+//This function is to Update .conf File with Elastic Server Info
+func insertInSection(filehandle string, findmatch bool, findloc int, offsetbyte int64, totalbytes int64, findstring string, replaceline string, linecount int, sectionstart int, sectionend int) bool {
+	sectionbyteblock := make([]byte, totalbytes-offsetbyte)
+
+	fi, err := os.OpenFile(filehandle, os.O_RDWR, 0777)
+	if err != nil {
+		log.Fatal(err)
+		return false
+	}
+	defer fi.Close()
+
+	{
+		seekpos, err := fi.Seek(offsetbyte, 0)
+		if err != nil {
+			log.Fatal(err)
+			return false
+		}
+
+		sectionbytelength, err := fi.Read(sectionbyteblock)
+		if err != nil {
+			log.Fatal(err)
+			return false
+		}
+		fmt.Println("Before -----")
+		fmt.Printf("%d bytes @ %d: %s\n", sectionbytelength, seekpos, string(sectionbyteblock))
+	}
+
+	{
+		var newlines []byte
+		seekpos, err := fi.Seek(offsetbyte, 0)
+		if err != nil {
+			log.Fatal(err)
+			return false
+		}
+
+		if true { //findmatch {
+			newlines = []byte(string(replaceline) + string(sectionbyteblock))
+			sectionbytelength, err := fi.WriteAt([]byte(newlines), seekpos)
+			if err != nil {
+				log.Fatal(err)
+				return false
+			}
+			fmt.Println("After -----")
+			fmt.Printf("%d bytes @ %d: %s\n", sectionbytelength, seekpos, string(newlines))
+			fi.Sync()
+
+		}
+	}
+	return true
+}
+
+func deleteInSection(filehandle string, findmatch bool, findloc int, offsetbyte int64, totalbytes int64,
+	findstring string, replaceline string,
+	linecount int, sectionstart int, sectionend int) bool {
+
+	sectionbyteblock := make([]byte, totalbytes-offsetbyte)
+	delimitertype := '\n'
+
+	fi, err := os.OpenFile(filehandle, os.O_RDWR, 0777)
+	if err != nil {
+		log.Fatal(err)
+		return false
+	}
+	defer fi.Close()
+
+	{
+		seekpos, err := fi.Seek(offsetbyte, 0)
+		if err != nil {
+			log.Fatal(err)
+			return false
+		}
+
+		sectionbytelength, err := fi.Read(sectionbyteblock)
+		if err != nil {
+			log.Fatal(err)
+			return false
+		}
+		fmt.Println("Before DELETE-----")
+		fmt.Printf("%d bytes @ %d: %s\n", sectionbytelength, seekpos, string(sectionbyteblock))
+	}
+
+	{
+
+	}
+
+	{
+		if true { //findmatch {
+
+			var tokens []string
+			tokens = strings.Split(string(sectionbyteblock), string(delimitertype))
+			tokenbytewidth := byte(tokens[0])
+			fmt.Printf("Delimiter = %s /t Toke[0] = %s /t Token Width = %d \n", string(delimitertype), tokens[0], tokenbytewidth)
+
+			var newlines []byte
+			seekpos, err := fi.Seek(offsetbyte+int64(tokenbytewidth), 0)
+			if err != nil {
+				log.Fatal(err)
+				return false
+			}
+
+			newlines = []byte(string(replaceline) + string(sectionbyteblock))
+			sectionbytelength, err := fi.WriteAt([]byte(newlines), seekpos)
+			if err != nil {
+				log.Fatal(err)
+				return false
+			}
+			fmt.Println("After DELETE-----")
+			fmt.Printf("%d bytes @ %d: %s\n", sectionbytelength, seekpos, string(newlines))
+			fi.Sync()
+
+		}
+	}
+	return true
+}
+
+func setFlags() [][]string {
+	//setFlags creates a 2D, n x 3 array with
+	//	a. [0] = Flag Name
+	//	b. [1] = Flag Default Value. File Name for Downloads, Section Value for Section, Replace String for Updates
+	//	c. [2] = Flag Description
+	//	d. [3] = Action: download | update | section
+	//	e. [4] = Save File As for Downloads or Find String for Updates
+
+	var mx2paramlist [][]string
+	var mx1paramlist []string
+
+	//TODO: To be uncommented. Large file. Avoided during testing
+	// mx1paramlist = []string{"dataset", "https://data.cityofnewyork.us/api/views/h9gi-nx95/rows.csv", "Data injested into Elastic Search", "download", "dataset.csv"}
+	// mx2paramlist = append(mx2paramlist, mx1paramlist)
+
+	mx1paramlist = []string{"logstashconf", "https://raw.githubusercontent.com/rajkrishnamurthy/examples/master/Exploring%20Public%20Datasets/nyc_traffic_accidents/nyc_collision_logstash.conf", "Field Mapping Configuration for Logstash", "download", "logstash.conf"}
+	mx2paramlist = append(mx2paramlist, mx1paramlist)
+
+	mx1paramlist = []string{"elasticconf", "https://raw.githubusercontent.com/elastic/examples/master/Exploring%20Public%20Datasets/nyc_traffic_accidents/nyc_collision_template.json", "Rules Mapping Configuration for ElasticSearch", "download", "template.json"}
+	mx2paramlist = append(mx2paramlist, mx1paramlist)
+
+	mx1paramlist = []string{"kibanaconf", "https://raw.githubusercontent.com/elastic/examples/master/Exploring%20Public%20Datasets/nyc_traffic_accidents/nyc_collision_kibana.json", "Configuration File for Kibana", "download", "kibana.json"}
+	mx2paramlist = append(mx2paramlist, mx1paramlist)
+
+	mx1paramlist = []string{"section", "none", "Section that will be used for UPDATES", "update", "elasticsearch"}
+	mx2paramlist = append(mx2paramlist, mx1paramlist)
+
+	//Provided space to align
+	mx1paramlist = []string{"eserver", "    hosts => \"[elasticsearch01:9200]\" \n", "Allows Dynamic Configuration of Elastic Search Server", "update", "hosts"}
+	mx2paramlist = append(mx2paramlist, mx1paramlist)
+
+	mx1paramlist = []string{"args", "none", "Arguments passed outside flags in Commandline", "none", "none"}
+	mx2paramlist = append(mx2paramlist, mx1paramlist)
+
+	return mx2paramlist
+}
+
+//This is the parent function that calls parse, delete and insert commands
+func updateFiles(basefilename string, paramflags paramstype, paramlist [][]string) (rresultval bool, rmodfile string) {
+	//TODO : Error Handling
+	//TODO : Output file/path override
+	var tempfetchlist [][]string
+	var section string = strings.TrimSpace(*paramflags["section"].(*string))
+	var fnstatus = false
+	var modfilename = "newfile"
+
+	{
+		var replacestring, findstring string
+		var flagvalueindex = 0
+		var updateflagindex = 3
+		var searchvalueindex = 4
+
+		var temp1xd []string
+
+		{
+			for _, pvalue := range paramlist {
+				replacestring = ""
+				if strings.Contains(strings.ToLower(pvalue[updateflagindex]), "update") {
+					replacestring = strings.TrimSpace(*paramflags[pvalue[flagvalueindex]].(*string))
+					findstring = strings.TrimSpace(pvalue[searchvalueindex])
+					if replacestring != "" {
+						temp1xd = []string{findstring, replacestring}
+						//add file to tempfetchlist
+						tempfetchlist = append(tempfetchlist, temp1xd)
+					}
+				}
+
+			}
+			findstring, replacestring = "", ""
+		}
+		{
+			for _, pvalue := range tempfetchlist {
+				//pvalue[0] => Find String
+				//pvalue[1] => Replace String
+				findstring, replacestring = pvalue[0], pvalue[1]
+
+				//Parse
+				//if found, delete lineitem
+				// add new lineitem
+
+				outputbool, findmatch, findloc,
+					offsetbytes, totalbyteswritten,
+					linecount, sectionstart, sectionend :=
+					parseSectionFile(basefilename,
+						section, findstring,
+						replacestring,
+						modfilename)
+
+				fmt.Printf(
+					"Result : %v \t Found: %v \t Location Found: %v \t Offset Bytes: %v \t Total Bytes: %v \n",
+					outputbool, findmatch, findloc, offsetbytes, totalbyteswritten)
+
+				fmt.Printf(
+					"Total Line Count: %v \n Section Start: %v \n Section End %v \n",
+					linecount, sectionstart, sectionend)
+
+				if findmatch {
+					deleteInSection(modfilename, findmatch, findloc, offsetbytes,
+						totalbyteswritten, findstring, replacestring,
+						linecount, sectionstart, sectionend)
+				}
+
+				insertInSection(
+					modfilename, findmatch, findloc, offsetbytes,
+					totalbyteswritten, findstring, replacestring,
+					linecount, sectionstart, sectionend)
+			}
+		}
+	}
+	return fnstatus, modfilename
+}
+
+func main() {
+	//Step1: Setup a Flag Infrastructure
+	paramlist := setFlags()
+	//paramlist is a 2d n x 3 matrix
+	//paramlist := []string{"dataset", "logstashconf", "elasticconf", "eserver", "inputyaml", "args"}
+
+	paramnames := make(paramstype)
+	paramnames = assignFlags(paramlist)
+
+	{
+		for _, value := range paramlist {
+			switch value[0] {
+			case "args":
+				//No action
+			default:
+				fmt.Printf("%s : %s \n", value[0], *paramnames[value[0]].(*string))
+			}
+
+		}
+	}
+
+	if fetchFiles(paramnames, paramlist) {
+		fmt.Println("successful downloads")
+	}
+
+	if updateFiles(paramnames, paramlist) {
+
+	}
+
+}

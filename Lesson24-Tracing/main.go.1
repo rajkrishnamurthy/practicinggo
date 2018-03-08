@@ -1,0 +1,21 @@
+package main
+
+import "fmt"
+
+var step1 = step1fn()
+
+func step1fn() string {
+	fmt.Printf("Inside the Step1 Function \n")
+	return "step1value"
+}
+
+func init() {
+	fmt.Printf("Inside the Init function \n")
+	step1 = "something else"
+}
+
+func main() {
+	fmt.Printf("Inside the Main Function \n")
+	fmt.Printf("Printing step1 : %v \n", step1)
+
+}

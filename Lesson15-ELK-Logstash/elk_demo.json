@@ -1,0 +1,121 @@
+{
+    "name": "nyc traffic",
+    "dataset": {
+      "sourceurl": "https://data.cityofnewyork.us/api/views/h9gi-nx95/rows.csv",
+      "description": "Source Dataset File",
+      "filetype": "csv",
+      "savefileas": "dataset.csv",
+      "action": {
+        "download": "yes",
+        "update": "no",
+        "extract" : "no",
+        "subset": "yes",
+        "subsetnumber": "10%",
+        "otherinfo": ""
+      }
+    },
+    "logstashconfig": {
+      "sourceurl": "https://raw.githubusercontent.com/rajkrishnamurthy/examples/master/Exploring%20Public%20Datasets/nyc_traffic_accidents/nyc_collision_logstash.conf",
+      "description": "Logstash Configuration File",
+      "filetype": "conf",
+      "savefileas": "logstash.conf",
+      "action": {
+        "download": "yes",
+        "update": "yes",
+        "extract" : "no",
+        "subset": "no",
+        "subsetnumber": "",
+        "otherinfo": ""
+      }
+    },
+    "elasticmapping": {
+      "sourceurl": "https://raw.githubusercontent.com/elastic/examples/master/Exploring%20Public%20Datasets/nyc_traffic_accidents/nyc_collision_template.json",
+      "description": "Logstash Configuration File",
+      "filetype": "json",
+      "savefileas": "template.json",
+      "action": {
+        "download": "yes",
+        "update": "yes",
+        "extract" : "no",
+        "subset": "no",
+        "subsetnumber": "",
+        "otherinfo": ""
+      }
+    },
+    "searchandupdate": [
+      {
+        "name" : "getelasticsearchserverconfig",
+        "order" : 1,
+        "description" : "selecting just the configuration attributes of the {elasticsearch} segment",
+        "action" : "find",
+        "outputfile" : "elasticserverconfigonly",
+        "findpattern": "elasticsearch{1}[\\s\\S]*\\}",
+        "replacevalue": "",
+        "filenames": [
+          "logstash.conf"
+        ]
+      },
+      {
+        "name" : "setelasticservername",
+        "order" : 2,
+        "description" : "Updating hostname under elasticsearch{}",
+        "action" : "find | insert | replace",
+        "outputfile" : "",
+        "findpattern": "hosts.*\\[.*\\]",
+        "replacevalue": "hosts => [\"elasticserver01:9200\"] \n",
+        "filenames": [
+          "elasticserverconfigonly"
+        ]
+      },
+      {
+        "name" : "updateindexname",
+        "order" : 3,
+        "description" : "Updating the Index => section under elasticsearch{}",
+        "action" : "find | insert | replace",
+        "outputfile" : "",
+        "findpattern": "index.*",
+        "replacevalue": "index => \"demo_index\" \n",
+        "filenames": [
+          "elasticserverconfigonly"
+        ]
+      },
+       {
+        "name" : "updatetemplatefilename",
+        "order" : 4,
+        "description" : "Updating the template => section under elasticsearch{}. This points to the template.json file",
+        "action" : "find | insert | replace",
+        "outputfile" : "",
+        "findpattern": "template[^_].*",
+        "replacevalue": "template => \"./template.json\" \n",
+        "filenames": [
+          "elasticserverconfigonly"
+        ]
+      },
+      
+      {
+        "name" : "updatetemplatename",
+        "order" : 5,
+        "description" : "Updating the template_name => section under elasticsearch{}",
+        "action" : "find | insert | replace",
+        "outputfile" : "",
+        "findpattern": "template_name.*",
+        "replacevalue": "template_name => \"demo_template\" \n",
+        "filenames": [
+          "elasticserverconfigonly"
+        ]
+      },
+      {
+        "name" : "mergeelasticsearchsection",
+        "order" : 6,
+        "description" : "Take the update config section from elasticserverconfigonly and merge it with logstash.conf file",
+        "action" : "find | insert | merge",
+        "outputfile" : "logstash.conf",
+        "findpattern": "elasticsearch{1}[\\s\\S]*\\}",
+        "replacevalue": "f:///elasticserverconfigonly",
+        "filenames": [
+          "logstash.conf"
+        ]
+      }  
+      
+    ]
+  }

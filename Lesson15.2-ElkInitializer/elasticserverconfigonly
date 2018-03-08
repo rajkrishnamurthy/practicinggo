@@ -1,0 +1,18 @@
+elasticsearch {
+    hosts => ["elasticserver01:9200"] 
+ 
+
+    index => "demo_index" 
+
+
+    template => "./template.json" 
+
+
+    template_name => "demo_template" 
+
+
+
+
+    template_overwrite => true
+    }
+}
