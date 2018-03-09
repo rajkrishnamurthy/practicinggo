@@ -31,4 +31,5 @@ func main() {
 	// This statement links rpc server to the socket, and allows rpc server to accept
 	// rpc request coming from that socket.
 	server.Accept(l)
+
 }
