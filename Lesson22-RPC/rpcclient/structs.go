@@ -19,4 +19,7 @@ type Obj2 struct {
 }
 
 // Taskinstance : Global receiver
-type Taskinstance int
+type Taskinstance struct {
+	InstanceName string
+	InstanceType string
+}

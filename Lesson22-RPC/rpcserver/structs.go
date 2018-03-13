@@ -5,8 +5,9 @@ type Obj1 struct {
 	Name  string
 	ID    int
 	Input struct {
-		Cmd    string
-		Params []string
+		Cmd      string
+		Params   []string
+		callfunc *func(*Obj1, *Obj2) bool
 	}
 }
 
@@ -19,4 +20,7 @@ type Obj2 struct {
 }
 
 // Taskinstance : Global receiver
-type Taskinstance int
+type Taskinstance struct {
+	InstanceName string
+	InstanceType string
+}
