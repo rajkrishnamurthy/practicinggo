@@ -7,70 +7,82 @@ import (
 	"github.com/boltdb/bolt"
 )
 
+var dbname string = "test.db"
+var bktname []byte = []byte("bucket1")
+
 type kv struct {
 	key   string
 	value interface{}
 }
 
-func createBucket(dbname string) (db *bolt.DB, bkt *bolt.Bucket, tx *bolt.Tx) {
-	//var err error
-	// Open the my.db data file in your current directory.
-	// It will be created if it doesn't exist.
-	db, err := bolt.Open("my.db", 0600, nil)
-	if err != nil {
-		log.Fatal(err)
-	}
-
-	tx, err = db.Begin(true)
-	if err != nil {
-		log.Fatal(err)
-		return nil, nil, nil
-	}
-
-	bkt, err = tx.CreateBucket([]byte("test"))
-	if err != nil {
-		log.Fatal(err)
-		return nil, nil, nil
-	}
-
-	return db, bkt, tx
-}
-
-func createTx(bkt *bolt.Bucket, tx *bolt.Tx, kva []kv) (commitTx int) {
-
-	for _, kv := range kva {
-
-		key := []byte(kv.key)
-		if val, ok := kv.value.([]byte); ok {
-			if err := bkt.Put(key, val); err != nil {
-				log.Fatal(err)
-				tx.Rollback()
-			}
-
-		}
-
-		if err := tx.Commit(); err != nil {
-			log.Fatal("Rollback failed")
-		}
-		commitTx++
-	}
-	return commitTx
-
-}
-
 func main() {
-	db, bkt, tx := createBucket("my.db")
+
+	db, err := bolt.Open(dbname, 0444, nil)
+	if err != nil {
+		log.Fatal(err)
+	}
 	defer db.Close()
 
-	kva := make([]kv, 10, 10)
-	kva = append(kva, kv{"key1", 12345})
-	kva = append(kva, kv{"key2", "value2"})
-	kva = append(kva, kv{"key1", `hello 
-		is this alright string
-		let us test
-		`})
+	/*
 
-	successfulTx := createTx(bkt, tx, kva)
-	fmt.Printf("Number of Committed Transactions %v \n", successfulTx)
+		kva := make([]kv, 1, 1)
+		kva = append(kva, kv{"key4", 12345})
+		kva = append(kva, kv{"key5", "value2"})
+		kva = append(kva, kv{"key6", `hello
+			is this alright string
+			let us test
+			`})
+		fmt.Printf("%v \n", kva)
+
+		_ = db.Update(func(tx *bolt.Tx) (err error) {
+			var val []byte
+			var buf bytes.Buffer
+			var commitTx int
+
+			bkt, err := tx.CreateBucketIfNotExists(bktname)
+			if err != nil {
+				log.Fatal(err)
+				return err
+			}
+
+			for _, kv := range kva {
+				if kv.value == nil {
+					continue
+				}
+				key := []byte(kv.key)
+				enc := gob.NewEncoder(&buf)
+				if err = enc.Encode(kv.value); err != nil {
+					log.Fatal(err)
+					return err
+				}
+				val = buf.Bytes()
+
+				if err = bkt.Put(key, val); err != nil {
+					log.Fatal(err)
+					return err
+				}
+				fmt.Printf("Inside createTx : Key = %v \t Value = %v \n", key, val)
+
+				commitTx++
+				buf.Reset()
+			}
+			return nil
+		})
+
+	*/
+
+	_ = db.View(func(tx *bolt.Tx) (err error) {
+		fmt.Printf("Inside db.View \n")
+		var k, v []byte
+		bkt := tx.Bucket([]byte(bktname))
+		cur := bkt.Cursor()
+		// k = []byte("key1")
+		// v = bkt.Get(k)
+		// k, v = cur.First()
+		for k, v = cur.First(); k != nil; k, v = cur.Next() {
+			fmt.Printf("Key = %v \n Value = %v \n \n", string(k[:]), v)
+		}
+		return nil
+	})
 
 }
