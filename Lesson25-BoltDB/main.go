@@ -12,24 +12,27 @@ import (
 var dbname string = "test.db"
 var bktname []byte = []byte("bucket1")
 
-type kv struct {
-	key   string
-	value interface{}
+const IntType, StringType, TextType, ByteArray, StructType byte = 101, 102, 103, 104, 105
+
+type KV struct {
+	Key     string
+	KeyType byte
+	Value   interface{}
 }
 
-func upsertRecords(db *bolt.DB, bktname []byte, kva []kv) (recordsInserted int, err error) {
+func upsertRecords(db *bolt.DB, bktname []byte, kva []KV) (recordsInserted int, err error) {
 
 	var val []byte
 	var buf bytes.Buffer
 	var commitTx int
 
 	for _, kv := range kva {
-		if kv.value == nil {
+		if kv.Value == nil {
 			continue
 		}
-		key := []byte(kv.key)
+		key := []byte(kv.Key)
 		enc := gob.NewEncoder(&buf)
-		if err = enc.Encode(kv.value); err != nil {
+		if err = enc.Encode(kv); err != nil {
 			log.Fatal(err)
 			return 0, err
 		}
@@ -59,22 +62,48 @@ func upsertRecords(db *bolt.DB, bktname []byte, kva []kv) (recordsInserted int, 
 		}
 	}
 
-	return 0, nil
+	return commitTx, nil
 }
 
-func selectRecords(db *bolt.DB, bktname []byte, key string) (kva []kv, err error) {
+func selectRecords(db *bolt.DB, bktname []byte, key string) (kva []KV, err error) {
+	var buf bytes.Buffer
+	var kvtmp KV
+
 	err = db.View(func(tx *bolt.Tx) (err error) {
-		var k, v []byte
+		var k []byte
 		bkt := tx.Bucket([]byte(bktname))
 
+		// If the user passes a specific key, the kv Array will be 1 x 1
 		if key != "" {
+			dec := gob.NewDecoder(&buf)
 			k = []byte(key)
-			v = bkt.Get(k)
-			kva = append(kva, kv{string(k), v})
-		} else {
+			n, err := buf.Read(bkt.Get(k))
+			if err != nil {
+				fmt.Printf("number of bytes read %v \n", n)
+				return err
+			}
+			err = dec.Decode(&kvtmp)
+			if err != nil {
+				return err
+			}
+			kva = append(kva, kvtmp)
+			buf.Reset()
+		} else { // If the users does not pass a key value (i.e, ""), we will create a n x 1 array
 			cur := bkt.Cursor()
-			for k, v = cur.First(); k != nil; k, v = cur.Next() {
-				kva = append(kva, kv{string(k), v})
+			for k, kv := cur.First(); k != nil; k, kv = cur.Next() {
+				rdr := bytes.NewReader(kv)
+				n, err := buf.ReadFrom(rdr)
+				dec := gob.NewDecoder(&buf)
+				if err != nil {
+					fmt.Printf("number of bytes read %v \n", n)
+					return err
+				}
+				err = dec.Decode(&kvtmp)
+				if err != nil {
+					return err
+				}
+				kva = append(kva, kvtmp)
+				buf.Reset()
 			}
 		}
 		if err != nil {
@@ -96,10 +125,10 @@ func main() {
 	}
 	defer db.Close()
 
-	kva := make([]kv, 1, 1)
-	kva = append(kva, kv{"key4", 54321})
-	kva = append(kva, kv{"key5", "Testing Key5"})
-	kva = append(kva, kv{"key6", `Updating: hello
+	kva := make([]KV, 1, 1)
+	kva = append(kva, KV{"key4", IntType, 54321})
+	kva = append(kva, KV{"key5", StringType, "Testing Key5"})
+	kva = append(kva, KV{"key6", TextType, `Updating: hello
 			is this alright string
 			let us test
 			`})
@@ -115,7 +144,6 @@ func main() {
 	kvaa, err := selectRecords(db, bktname, "")
 	if err != nil {
 		log.Fatal(err)
-		return
 	}
 	fmt.Printf("Selected Records %v \n", kvaa)
 

@@ -11,6 +11,7 @@ func main() {
 	var servicename = "Instance"
 	//Creating an instance of struct which implement Arith interface
 	inst := new(Taskinstance)
+	var portnumber = "9876"
 
 	// Register a new rpc server (In most cases, you will use default server only)
 	// And register struct we created above by name "Arith"
@@ -23,7 +24,7 @@ func main() {
 	}
 
 	// Listen for incoming tcp packets on specified port.
-	l, e := net.Listen("tcp", ":9876")
+	l, e := net.Listen("tcp", (":" + portnumber))
 	if e != nil {
 		log.Fatal("listen error:", e)
 	}
