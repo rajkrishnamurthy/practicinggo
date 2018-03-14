@@ -1,6 +1,8 @@
 package main
 
 import (
+	"bytes"
+	"encoding/gob"
 	"fmt"
 	"log"
 
@@ -15,6 +17,77 @@ type kv struct {
 	value interface{}
 }
 
+func upsertRecords(db *bolt.DB, bktname []byte, kva []kv) (recordsInserted int, err error) {
+
+	var val []byte
+	var buf bytes.Buffer
+	var commitTx int
+
+	for _, kv := range kva {
+		if kv.value == nil {
+			continue
+		}
+		key := []byte(kv.key)
+		enc := gob.NewEncoder(&buf)
+		if err = enc.Encode(kv.value); err != nil {
+			log.Fatal(err)
+			return 0, err
+		}
+		val = buf.Bytes()
+
+		err = db.Update(func(tx *bolt.Tx) (err error) {
+			bkt, err := tx.CreateBucketIfNotExists(bktname)
+			if err != nil {
+				log.Fatal(err)
+				return err
+			}
+
+			if err = bkt.Put(key, val); err != nil {
+				log.Fatal(err)
+				return err
+			}
+			fmt.Printf("Inside createTx : Key = %v \t Value = %v \n", key, val)
+
+			commitTx++
+			buf.Reset()
+			return nil
+		})
+
+		if err != nil {
+			log.Fatal(err)
+			return 0, err
+		}
+	}
+
+	return 0, nil
+}
+
+func selectRecords(db *bolt.DB, bktname []byte, key string) (kva []kv, err error) {
+	err = db.View(func(tx *bolt.Tx) (err error) {
+		var k, v []byte
+		bkt := tx.Bucket([]byte(bktname))
+
+		if key != "" {
+			k = []byte(key)
+			v = bkt.Get(k)
+			kva = append(kva, kv{string(k), v})
+		} else {
+			cur := bkt.Cursor()
+			for k, v = cur.First(); k != nil; k, v = cur.Next() {
+				kva = append(kva, kv{string(k), v})
+			}
+		}
+		if err != nil {
+			return err
+		}
+		return nil
+	})
+	if err != nil {
+		return nil, err
+	}
+	return kva, nil
+}
+
 func main() {
 
 	db, err := bolt.Open(dbname, 0444, nil)
@@ -23,66 +96,27 @@ func main() {
 	}
 	defer db.Close()
 
-	/*
-
-		kva := make([]kv, 1, 1)
-		kva = append(kva, kv{"key4", 12345})
-		kva = append(kva, kv{"key5", "value2"})
-		kva = append(kva, kv{"key6", `hello
+	kva := make([]kv, 1, 1)
+	kva = append(kva, kv{"key4", 54321})
+	kva = append(kva, kv{"key5", "Testing Key5"})
+	kva = append(kva, kv{"key6", `Updating: hello
 			is this alright string
 			let us test
 			`})
-		fmt.Printf("%v \n", kva)
+	fmt.Printf("%v \n", kva)
 
-		_ = db.Update(func(tx *bolt.Tx) (err error) {
-			var val []byte
-			var buf bytes.Buffer
-			var commitTx int
+	cnt, err := upsertRecords(db, bktname, kva)
+	fmt.Printf("Inserted Records %v \n", cnt)
+	if err != nil {
+		log.Fatal(err)
+		return
+	}
 
-			bkt, err := tx.CreateBucketIfNotExists(bktname)
-			if err != nil {
-				log.Fatal(err)
-				return err
-			}
-
-			for _, kv := range kva {
-				if kv.value == nil {
-					continue
-				}
-				key := []byte(kv.key)
-				enc := gob.NewEncoder(&buf)
-				if err = enc.Encode(kv.value); err != nil {
-					log.Fatal(err)
-					return err
-				}
-				val = buf.Bytes()
-
-				if err = bkt.Put(key, val); err != nil {
-					log.Fatal(err)
-					return err
-				}
-				fmt.Printf("Inside createTx : Key = %v \t Value = %v \n", key, val)
-
-				commitTx++
-				buf.Reset()
-			}
-			return nil
-		})
-
-	*/
-
-	_ = db.View(func(tx *bolt.Tx) (err error) {
-		fmt.Printf("Inside db.View \n")
-		var k, v []byte
-		bkt := tx.Bucket([]byte(bktname))
-		cur := bkt.Cursor()
-		// k = []byte("key1")
-		// v = bkt.Get(k)
-		// k, v = cur.First()
-		for k, v = cur.First(); k != nil; k, v = cur.Next() {
-			fmt.Printf("Key = %v \n Value = %v \n \n", string(k[:]), v)
-		}
-		return nil
-	})
+	kvaa, err := selectRecords(db, bktname, "")
+	if err != nil {
+		log.Fatal(err)
+		return
+	}
+	fmt.Printf("Selected Records %v \n", kvaa)
 
 }
