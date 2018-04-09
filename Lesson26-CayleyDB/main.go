@@ -39,8 +39,8 @@ func init() {
 func main() {
 	store := initializeAndOpenGraph(dbPath)
 	a := Admin{
-		Name:           "Josh",
-		Email:          "josh_f@gmail.com",
+		Name:           "Raj",
+		Email:          "raj_k@gmail.com",
 		HashedPassword: "435iue8uou9eu",
 	}
 
@@ -51,8 +51,8 @@ func main() {
 	checkErr(err)
 
 	c := Clinic{
-		Name:      "Healthy Life",
-		Address1:  "11 boar st, Singapore 11233",
+		Name:      "TRK Illam",
+		Address1:  "6, Subramaniya Nagar, Cross St",
 		CreatedBy: adminId,
 	}
 
