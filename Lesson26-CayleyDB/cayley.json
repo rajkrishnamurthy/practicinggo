@@ -1,5 +1,2 @@
 {
- "database" : "bolt",
- "db_path" : "./",
- "read_only" : false
-}
+ "database" : "bolt", "db_path" : "./db/"}
