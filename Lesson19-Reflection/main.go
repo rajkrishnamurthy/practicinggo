@@ -18,28 +18,47 @@ func test() {
 }
 
 func main() {
-	var fnName = "test"
+	// var fnName = "test"
 	// var fnObject func()
-	sl := []int{1, 2, 3}
+	type fnName struct {
+		a string
+		b string
+		c int
+		d interface{}
+	}
+
+	type s []int
+	sl := s{1, 2, 3}
+	//sl := []int{1, 2, 3}
 	greeting := "hello"
 	greetingPtr := &greeting
 
-	fmt.Printf("Reflect ValueOf: %v \t TypeOf: %v \n", reflect.ValueOf(fnName), reflect.TypeOf(fnName))
+	//fmt.Printf("TypeOf: %v \n", reflect.TypeOf(fnName))
+	//fmt.Printf("Reflect ValueOf: %v \t TypeOf: %v \n", reflect.ValueOf(fnName), reflect.TypeOf(fnName))
 	f := Foo{A: 10, B: "Salutations", fn: test}
 	f.fn()
 	fp := &f
 
+	fmt.Printf("slType := reflect.TypeOf(sl); where sl := []int{1, 2, 3}  \n")
 	slType := reflect.TypeOf(sl)
-	gType := reflect.TypeOf(greeting)
-	grpType := reflect.TypeOf(greetingPtr)
-	fType := reflect.TypeOf(f)
-	fpType := reflect.TypeOf(fp)
-
 	examiner(slType, 0)
+
+	fmt.Printf("gType := reflect.TypeOf(greeting); where greeting is string \n")
+	gType := reflect.TypeOf(greeting)
 	examiner(gType, 0)
+
+	fmt.Printf("grpType := reflect.TypeOf(greetingPtr) ; where greetingPtr is * string \n")
+	grpType := reflect.TypeOf(greetingPtr)
 	examiner(grpType, 0)
+
+	fmt.Printf("fType := reflect.TypeOf(f) ; where f is struct{} \n")
+	fType := reflect.TypeOf(f)
 	examiner(fType, 0)
+
+	fmt.Printf("fpType := reflect.TypeOf(fp) ; where fp is * struct{} \n")
+	fpType := reflect.TypeOf(fp)
 	examiner(fpType, 0)
+
 }
 
 func examiner(t reflect.Type, depth int) {
@@ -58,4 +77,8 @@ func examiner(t reflect.Type, depth int) {
 			}
 		}
 	}
+}
+
+func examineValue(t reflect.Value) {
+
 }
