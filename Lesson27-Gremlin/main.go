@@ -7,7 +7,13 @@ import (
 	"github.com/go-gremlin/gremlin"
 )
 
+func init() {
+
+}
+
 func main() {
+	var querystring string
+
 	myusername := "/dbs/graphdb/colls/Persons"
 	mypassword := "Ahkrt0njQlNocrAwLKpDkJ05KzqKi1w81bHE0XoZaGy1oeed71mKJ5IpDQb36xDDAReYyybcdaXz46DxxudD0Q=="
 	remotehost := "cngremlintest.gremlin.cosmosdb.azure.com"
@@ -18,7 +24,9 @@ func main() {
 	auth := gremlin.OptAuthUserPass(myusername, mypassword)
 	client, err := gremlin.NewClient(remoteurl, auth)
 
-	data, err := client.ExecQuery(`g.V()`)
+	querystring = `g.V().has('firstName','Raj').bothE()`
+
+	data, err := client.ExecQuery(querystring)
 	if err != nil {
 		panic(err)
 	}
