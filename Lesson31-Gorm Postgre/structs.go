@@ -1,8 +1,11 @@
 package main
 
 import (
+	"time"
+
 	"github.com/jinzhu/gorm"
 	_ "github.com/jinzhu/gorm/dialects/postgres"
+	"github.com/satori/go.uuid"
 )
 
 type WorkerNode struct {
@@ -15,6 +18,8 @@ type WorkerNode struct {
 	CNManagementService string `json:"cnManagementService,omitempty"`
 	CNTaskDirectory     string `json:"cnTaskDirectory,omitempty"`
 	CNCommandShell      string `json:"cnCommandShell,omitempty"`
+	CNGUID              uuid.UUID
+	CNCreateDTM         time.Time
 }
 
 // CNTaskPortRange     CNTaskPortRange   `json:"cnTaskPortRange,omitempty"`

@@ -6,10 +6,10 @@ import (
 	"reflect"
 )
 
-type httpreqobject http.Request
+type httpreqobject int
 
-func (f *httpreqobject) reflecttheobject() {
-	val := reflect.ValueOf(f).Elem()
+func (f *httpreqobject) reflecttheobject(req *http.Request) {
+	val := reflect.ValueOf(req).Elem()
 
 	for i := 0; i < val.NumField(); i++ {
 		valueField := val.Field(i)
@@ -27,5 +27,6 @@ func main() {
 
 func foofunc(w http.ResponseWriter, req *http.Request) {
 	f := new(httpreqobject)
-	*f = req.(httpreqobject)
+	// *f = req.(httpreqobject)
+	f.reflecttheobject(req)
 }

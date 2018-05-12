@@ -3,8 +3,10 @@ package main
 import (
 	"fmt"
 	"log"
+	"time"
 
 	"github.com/jinzhu/gorm"
+	uuid "github.com/satori/go.uuid"
 	// _ "github.com/jinzhu/gorm/dialects/sqlite"
 	_ "github.com/jinzhu/gorm/dialects/postgres"
 )
@@ -37,11 +39,18 @@ func main() {
 		db.AutoMigrate(&WorkerNode{})
 		fmt.Printf("AutoMigrate() complete \n")
 
+		u1, err := uuid.FromString("6ba7b810-9dad-11d1-80b4-00c04fd430c8")
+		if err != nil {
+			log.Printf("UUID Generation Failed \n")
+		}
+
 		// Create a record
 		db.Create(&WorkerNode{
-			CNAPIVersion:  "1.0.0",
+			CNAPIVersion:  "2.0.0",
 			CNPath:        "/usr/lib",
 			CNExternalURL: "http://node1.continube.io",
+			CNGUID:        u1,
+			CNCreateDTM:   time.Now(),
 		})
 		fmt.Printf("Create() complete \n")
 
