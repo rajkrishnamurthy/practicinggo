@@ -1,59 +1,117 @@
 package main
 
 import (
+	"cncommonlibs/constants"
+	"encoding/json"
 	"fmt"
 	"log"
+	"time"
+
+	"github.com/lib/pq"
 
 	"github.com/jinzhu/gorm"
 	_ "github.com/jinzhu/gorm/dialects/postgres"
 )
 
-const (
-	hostname = "localhost"
-	port     = "5432"
-	username = "postgres"
-	password = "password"
-	dbname   = "temp"
-)
-
-// User has and belongs to many languages, use `user_languages` as join table
-type User struct {
-	// gorm.Model
-	UserID       int `sql:",pk" gorm:"AUTO_INCREMENT"`
-	UserName     string
-	UserLocation string
-	LanguageID   uint `gorm:"foreignkey:LanguageID,assoication_foreignkey:LanguageID"`
-	// Languages    []Language  `gorm:"foreignkey:ID`// `gorm:"many2many:user_languages;"`
-}
-
-type Language struct {
-	// gorm.Model
-	LanguageID int `sql:",pk" gorm:"AUTO_INCREMENT,PRIMARY_KEY"`
-	Name       string
-	State      string
-	Country    string
-}
-
 func main() {
+	testJSONOps()
+}
 
-	// usr := User{}
-	// language := Language{}
-	// languages := make([]Language, 0)
+func testJSONOps() {
+	jsonOutput := make([]*AppCred, 0)
+	{
+		s1 := &AppCred{}
+		s1.AppGUID = "0ebec76c-20ff-402f-bbb9-fca92e3c93e9"
+		s1.Creds = make([]*Credential, 0)
+		{
+			tmp := &Credential{}
+			tmp.UserID = "john.doe@acme.com"
+			tmp.UserDomain = "acme.continube.com"
+			tmp.SSHPrivateKey = []byte(sshkey)
+			tmp.OtherCredInfo = make(map[string]interface{})
+			tmp.OtherCredInfo["database"] = "TestOdoo"
+			s1.Creds = append(s1.Creds, tmp)
+		}
 
-	connectionstring := fmt.Sprintf("postgres://%s:%s@%s:%s/%s?sslmode=%s", username, password, hostname, port, dbname, "disable")
+		{
+			tmp := &Credential{}
+			tmp.UserID = "jane.doe@fabrikam.com"
+			tmp.UserDomain = "fabrikam.continube.com"
+			tmp.SSHPrivateKey = []byte(sshkey)
+			tmp.OtherCredInfo = make(map[string]interface{})
+			tmp.OtherCredInfo["manager"] = "jen.doe@fabrikam.com"
+			s1.Creds = append(s1.Creds, tmp)
+
+		}
+		jsonOutput = append(jsonOutput, s1)
+	}
+	{
+		s1 := &AppCred{}
+		s1.AppGUID = "503846da-71cc-47c8-aad3-9335880f60f5"
+		s1.Creds = make([]*Credential, 0)
+		{
+			tmp := &Credential{}
+			tmp.UserID = "loga.vinayagam@continube.com"
+			tmp.UserDomain = "continube.com"
+			tmp.SSHPrivateKey = []byte(sshkey)
+			tmp.OtherCredInfo = make(map[string]interface{})
+			tmp.OtherCredInfo["database"] = "SAP"
+			s1.Creds = append(s1.Creds, tmp)
+		}
+
+		{
+			tmp := &Credential{}
+			tmp.UserID = "jane.doe@fabrikam.com"
+			tmp.UserDomain = "fabrikam.continube.com"
+			tmp.SSHPrivateKey = []byte(sshkey)
+			tmp.OtherCredInfo = make(map[string]interface{})
+			tmp.OtherCredInfo["manager"] = "jen.doe@fabrikam.com"
+			s1.Creds = append(s1.Creds, tmp)
+
+		}
+		jsonOutput = append(jsonOutput, s1)
+	}
+
+	payload, err := json.Marshal(jsonOutput)
+	if err != nil {
+		fmt.Printf("Cannot marshal %v \n", err)
+	}
+
+	fmt.Printf("%s", payload)
+
+}
+
+func testDBOps() {
+	constants.InitConstants()
+	connectionstring := fmt.Sprintf("postgres://%s:%s@%s:%s/%s?sslmode=%s",
+		constants.CNdbuser, constants.CNdbpassword,
+		constants.CNdbhostname, constants.CNdbport,
+		constants.CNdbname, "disable")
+
 	db, err := gorm.Open("postgres", connectionstring)
 	if err != nil {
 		log.Printf("gorm.Open() Error = %v \n", err)
-		panic("failed to connect database")
 	}
-	defer db.Close()
 
-	db.DropTableIfExists(&Language{})
-	db.CreateTable(&Language{})
-	db.DropTableIfExists(&User{})
-	db.CreateTable(&User{})
+	// db.DropTableIfExists(AppGroupModel{})
 
-	db.Model(&User{}).Related(&Language{})
-	//// SELECT * FROM "languages" INNER JOIN "user_languages" ON "user_languages"."language_id" = "languages"."id" WHERE "user_languages"."user_id" = 111
+	if !db.HasTable(AppGroupModel{}) {
+		err := db.AutoMigrate(AppGroupModel{}).Error
+		if err != nil {
+			log.Printf("Error in AutoMigrate(AppGroupModel{}): %v", err)
+		}
+	}
+	appgrp1 := &AppGroupModel{}
+	appgrp1.ID = 10
+	appgrp1.CreatedAt, appgrp1.UpdatedAt = time.Now(), time.Now()
+	appgrp1.AppGroupType = 2
+	appgrp1.Applications = pq.Int64Array{1, 2, 3, 4}
+	appgrp1.UserDomain = "dummy.dummy.com"
+	appGroupTags := make(map[string]string)
+	appGroupTags["app"] = "odoo"
+	appGroupTags["os"] = "linux"
+	tmp, _ := json.Marshal(appGroupTags)
+	appgrp1.AppTags = tmp //fmt.Sprintf("%s", tmp)
 
+	fmt.Printf("%v", db.Save(appgrp1).Error)
 }
