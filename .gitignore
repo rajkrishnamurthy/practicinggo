@@ -7,3 +7,7 @@ Lesson25-BoltDB/test.db
 Lesson26-CayleyDB/db.boltdb/indexes.bolt
 Lesson26-CayleyDB/db.boltdb/indexes.bolt.lock
 Lesson28-GoInternals/Ch01/test.o
+.DS_Store
+Lesson51-Stats/.DS_Store
+Lesson18-md5checksum/.DS_Store
+.DS_Store

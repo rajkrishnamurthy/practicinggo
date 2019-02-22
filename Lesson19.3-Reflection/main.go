@@ -43,7 +43,9 @@ func initSource(source interface{}) {
 		fmt.Printf("refFieldVal \t Name = %v \t Type =  %v \t Kind = %v \t Settable = %v \n", refFieldVal.Type().Name(), refFieldVal.Type().String(), refFieldVal.Kind().String(), refFieldVal.CanSet())
 		if refFieldVal.CanSet() {
 			switch refFieldVal.Kind() {
-			case reflect.String, reflect.Int:
+			case reflect.String:
+				refFieldVal.SetString("Setting this to a test value")
+			case reflect.Int:
 				refFieldVal.Set(reflect.Zero(refFieldVal.Type()))
 			case reflect.Slice:
 				refFieldVal.Set(reflect.MakeSlice(refFieldVal.Type(), 1, 1))
