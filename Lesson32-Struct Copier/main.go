@@ -19,7 +19,13 @@ type Address struct {
 	Zipcode      string
 }
 
-type someotherstruct somestruct
+// type someotherstruct somestruct
+type someotherstruct struct {
+	ID      int
+	Tags    []string
+	Name    string
+	Address *Address
+}
 
 func main() {
 
@@ -34,7 +40,7 @@ func main() {
 	}
 	var target = &someotherstruct{}
 
-	fmt.Printf("Target \n ------ \n %#v \n", source)
+	fmt.Printf("Source \n ------ \n %#v \n", source)
 
 	copier.Copy(target, source)
 	fmt.Printf("New Target \n ------ \n %#v \n", target)
