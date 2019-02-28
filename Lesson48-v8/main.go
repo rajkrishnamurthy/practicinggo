@@ -1,5 +1,10 @@
 package main
 
+import (
+	"fmt"
+	"os"
+)
+
 type SiteTourConfig struct {
 	HelpToggleKey string // TBD
 	Pages         []struct {
@@ -19,5 +24,7 @@ type SiteTourRoleMapping struct {
 }
 
 func main() {
+
+	fmt.Printf(os.Getenv("SERVICE_BUS_DNS"))
 
 }

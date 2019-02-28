@@ -15,7 +15,10 @@
             "port": 2345,
             "host": "127.0.0.1",
             "program": "${fileDirname}",
-            "env": {},
+            "envFile": "${workspaceFolder}/docker.env",
+            "env": {
+                "key": "value"
+            },
             "args": [],
             "showLog": true
         }

@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
+	"io"
 	"io/ioutil"
 	"net/http"
 	"os"
@@ -17,8 +18,8 @@ func main() {
 	inputs := &Inputs{}
 	outputs := &Outputs{}
 
-	inputs.WorkingPath = "F:\\temp"
-	inputs.InputFileName = "image2.jpg"
+	// inputs.WorkingPath = "F:\\temp"
+	inputs.InputFileName = "https://bit.ly/2UeLftY"
 	inputs.OCRHeaderKey = "2cba1b29da294f7395b2819220bd3e03"
 	inputs.OCRQString = "language=en"
 	inputs.OCRURL = "https://southeastasia.api.cognitive.microsoft.com/vision/v1.0/ocr"
@@ -55,26 +56,33 @@ func (inst *TaskInstance) OCRProcessor(inputs *Inputs, outputs *Outputs) (err er
 
 	ocrparser := OCRParser{}
 
-	if _, err = os.Stat(inputs.WorkingPath); err != nil {
-		outputs.OCROutput = []byte(fmt.Sprintf("Working Path not valid. %v", err))
-		errDesc := "Working Path not valid. %v"
+	// if _, err = os.Stat(inputs.WorkingPath); err != nil {
+	// 	outputs.OCROutput = []byte(fmt.Sprintf("Working Path not valid. %v", err))
+	// 	errDesc := "Working Path not valid. %v"
+	// 	outputs.OCROutput = []byte(fmt.Sprintf(errDesc, err))
+	// 	return fmt.Errorf(errDesc, err)
+
+	// }
+	// if err = os.Chdir(inputs.WorkingPath); err != nil {
+	// 	errDesc := "Cannot change directory. %v"
+	// 	outputs.OCROutput = []byte(fmt.Sprintf(errDesc, err))
+	// 	return fmt.Errorf(errDesc, err)
+	// }
+
+	// if _, err = os.Stat(inputs.InputFileName); err != nil {
+	// 	errDesc := "File not found. %v"
+	// 	outputs.OCROutput = []byte(fmt.Sprintf(errDesc, err))
+	// 	return fmt.Errorf(errDesc, err)
+	// }
+
+	err = DownloadFile("./imagefile", inputs.InputFileName)
+	if err != nil {
+		errDesc := "Cannot download file. %v"
 		outputs.OCROutput = []byte(fmt.Sprintf(errDesc, err))
 		return fmt.Errorf(errDesc, err)
-
-	}
-	if err = os.Chdir(inputs.WorkingPath); err != nil {
-		errDesc := "Cannot change directory. %v"
-		outputs.OCROutput = []byte(fmt.Sprintf(errDesc, err))
-		return fmt.Errorf(errDesc, err)
 	}
 
-	if _, err = os.Stat(inputs.InputFileName); err != nil {
-		errDesc := "File not found. %v"
-		outputs.OCROutput = []byte(fmt.Sprintf(errDesc, err))
-		return fmt.Errorf(errDesc, err)
-	}
-
-	fileByteArray, err := ioutil.ReadFile(inputs.InputFileName)
+	fileByteArray, err := ioutil.ReadFile("./imagefile")
 	if err != nil {
 		errDesc := "Cannot read file. %v"
 		outputs.OCROutput = []byte(fmt.Sprintf(errDesc, err))
@@ -139,4 +147,26 @@ type Inputs struct {
 
 type Outputs struct {
 	OCROutput []byte // OCR Output encoded as []byte
+}
+
+// DownloadFile : Download the file
+func DownloadFile(filepath string, url string) error {
+
+	// Get the data
+	resp, err := http.Get(url)
+	if err != nil {
+		return err
+	}
+	defer resp.Body.Close()
+
+	// Create the file
+	out, err := os.Create(filepath)
+	if err != nil {
+		return err
+	}
+	defer out.Close()
+
+	// Write the body to file
+	_, err = io.Copy(out, resp.Body)
+	return err
 }
