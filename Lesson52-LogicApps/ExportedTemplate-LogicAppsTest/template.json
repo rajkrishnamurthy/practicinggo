@@ -1,0 +1,26 @@
+{
+    "$schema": "https://schema.management.azure.com/schemas/2015-01-01/deploymentTemplate.json#",
+    "contentVersion": "1.0.0.0",
+    "parameters": {
+        "connections_service_now_name": {
+            "defaultValue": "service-now",
+            "type": "String"
+        }
+    },
+    "variables": {},
+    "resources": [
+        {
+            "type": "Microsoft.Web/connections",
+            "apiVersion": "2016-06-01",
+            "name": "[parameters('connections_service_now_name')]",
+            "location": "westus2",
+            "properties": {
+                "displayName": "TestingSNOWConnection1",
+                "customParameterValues": {},
+                "api": {
+                    "id": "[concat('/subscriptions/207768eb-529f-4666-8b00-85b26be2e9fb/providers/Microsoft.Web/locations/westus2/managedApis/', parameters('connections_service_now_name'))]"
+                }
+            }
+        }
+    ]
+}
