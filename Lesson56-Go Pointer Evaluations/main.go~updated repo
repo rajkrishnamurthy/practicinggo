@@ -1,0 +1,188 @@
+// https://play.golang.org/p/M5TpVlIAWFD	
+
+package main
+
+import (
+	"encoding/binary"
+	"encoding/hex"
+	"fmt"
+	"log"
+	"runtime"
+	"strings"
+	"unsafe"
+)
+
+func main() {
+	// Let's print out architecture and pointer size. This will help us in
+	// understanding the memory layout later in the program.
+	fmt.Printf("architecture: %s\n", runtime.GOARCH)
+	var ptr uintptr
+	ptrSize = int(unsafe.Sizeof(ptr))
+	fmt.Printf("pointer size: %d\n\n", ptrSize)
+	// If you see a 4 output for the pointer size that means a pointer is
+	// represented by 4 bytes on your computer. This means you are running on
+	// a 32 bit architecture. A 64 bit architecture would have twice as many
+	// bytes for a pointer (8).
+
+	// Now let's dive into dumping out the memory for the slice. Let's use
+	// make to create a slice value (Note: I shortened the len/cap that you
+	// had to make dumping out the memory a bit easier).
+	arr1 := make([]int, 5, 10)
+
+	// You can use this handy rawAccess function to get a []byte of the memory
+	// for any variable in Go! Pretty cool eh?!
+	mem1 := rawAccess(unsafe.Pointer(&arr1), int(unsafe.Sizeof(arr1)))
+
+	// Now let's dump this memory out.
+	fmt.Println("dumping slice created via make(...):")
+	fmt.Printf("  address: %p\n", &arr1)
+	fmt.Printf("  sizeof: %d\n", unsafe.Sizeof(arr1))
+	fmt.Printf("  dump: %s\n\n", strings.Replace(strings.Trim(hex.Dump(mem1), "\n"), "\n", "\n        ", -1))
+
+	// You should now see a bit of memory dumped out in hex. This can be a bit
+	// hard to read if you are not used to it so I will explain what is going
+	// on using a 32 bit example. A 64 bit just has double the amount of
+	// bytes.
+
+	// Let's take that last line that contains the dump:
+	//
+	//     dump: 00000000  30 e0 44 00 05 00 00 00  0a 00 00 00  |0.D.........|
+	//
+	// The first section that is all 0s is the offset for this dump.
+	// Specifically, this is the offset for the first byte on that line. Since
+	// we are dumping our own bit of memory this will always start at 0. If
+	// you run this program on a 64 bit machine it will have another line
+	// showing the value 10 which is in hex and means "this next byte, yea,
+	// that is the 16th byte my friend!"). This information isn't useful for
+	// our experiment but is good to know.
+	//
+	// Next we have the sets of 4 bytes (on 64 bit this will be three sections
+	// of 8 bytes). We can inspect each of these bytes here:
+	//
+	//     30 e0 44 00
+	//     05 00 00 00
+	//     0a 00 00 00
+	//
+	// That first one looks a bit weird so let's come back to that.
+	//
+	// The second one is the value 5. Since this architecture is little endian
+	// that means the least significant values are lower in memory and come
+	// first in our byte slice. As a result we read left to right. So
+	// `05 00 00 00` reads as the value 5. Hey, that was the length of our
+	// array! Nice!
+	//
+	// We can decode the third one in the same way. `0a 00 00 00` decodes as
+	// the value a which in hex is 10. Of course! This is our length.
+	//
+	// Now let's take a look at that first, suspicious looking set of bytes.
+	// Since this is a large number it might be a pointer. How about we assume
+	// that it is and read the bit of memory it is pointing at.
+
+	// Let's cut out those bits of our slice for easy access.
+	first := mem1[:ptrSize]             // pointer to data
+	second := mem1[ptrSize : ptrSize*2] // length
+	third := mem1[ptrSize*2:]           // capacity
+
+	// This is a way of interpreting the first bytes as a pointer in Go.
+	dataPtr := pointerSlice(first)
+
+	// And this is how we read the len and cap bytes into ints.
+	length := intSlice(second)
+	capacity := intSlice(third)
+
+	// We can then use that pointer to get raw access to that bit of memory:
+	// Lets dump out the memory up to the length:
+	dataMemLen := rawAccess(dataPtr, length*int(unsafe.Sizeof(mem1[0])))
+	// and also the capacity:
+	dataMemCap := rawAccess(dataPtr, capacity*int(unsafe.Sizeof(mem1[0])))
+
+	fmt.Println("dumping data for slice created via make(...):")
+	fmt.Printf("  address: %p\n", dataPtr)
+	fmt.Printf("  len: %d\n", length)
+	fmt.Printf("  lendump: %s\n", strings.Replace(strings.Trim(hex.Dump(dataMemLen), "\n"), "\n", "\n        ", -1))
+	fmt.Printf("  cap: %d\n", capacity)
+	fmt.Printf("  capdump: %s\n\n", strings.Replace(strings.Trim(hex.Dump(dataMemCap), "\n"), "\n", "\n        ", -1))
+
+	// Interesting, there is all zeros here. That must be the backing array for
+	// the slice! So cool!
+
+	// So, we now know that a slice consists of three values:
+	//
+	//     - A pointer to the backing array where the data is actually stored.
+	//     - An integer value for the length.
+	//     - An integer value for the capacity.
+
+	// Knowing this, let's now dump the slice created with new(...) and see
+	// what it does.
+	arr2 := new([]int)
+
+	mem2 := rawAccess(unsafe.Pointer(&arr2), int(unsafe.Sizeof(arr2)))
+
+	fmt.Println("dumping slice created via new(...):")
+	fmt.Printf("  address: %p\n", &arr2)
+	fmt.Printf("  sizeof: %d\n", unsafe.Sizeof(arr2))
+	fmt.Printf("  dump: %s\n\n", strings.Replace(strings.Trim(hex.Dump(mem2), "\n"), "\n", "\n        ", -1))
+
+	// So this is an interesting result:
+	//
+	//    50 a1 40 00
+	//
+	// We just have a single 4 byte value that looks like a pointer. I guess we
+	// should follow the pointer and see what it is pointing at:
+
+	dataPtr2 := pointerSlice(mem2)
+	dataMem2 := rawAccess(dataPtr2, int(unsafe.Sizeof(arr1)))
+
+	fmt.Println("dumping mem for what new(...) is pointing at:")
+	fmt.Printf("  address: %p\n", dataPtr2)
+	fmt.Printf("  dump: %s\n\n", strings.Replace(strings.Trim(hex.Dump(dataMem2), "\n"), "\n", "\n        ", -1))
+
+	// Interesting, this is the three values we were looking at before,
+	// however, this time they are all zeros. So, what it looks like is that
+	// new() created a pointer to a zero initialized slice. This would be
+	// equivalent to this:
+	//
+	//     var mySlicePtr &Slice{}
+	//
+	// That is, if our slice was defined as a struct. Hey, isn't Go implemented
+	// in Go? I wonder if the slice type is defined as a struct somehere?
+	//
+	// https://github.com/golang/go/blob/a1c481d85139f77ab27210526f9dfa2f3b375ef9/src/runtime/slice.go#L13-L17
+	//
+	// What do you know, it is! So cool!
+}
+
+var ptrSize int
+
+func rawAccess(p unsafe.Pointer, len int) []byte {
+	return (*(*[0xFF]byte)(p))[:len]
+}
+
+// pinterSlice will give you back a pointer where the value is the bytes in the
+// slice you provided. This might cause go vet to complain because we are doing
+// things it doesn't like.
+func pointerSlice(in []byte) unsafe.Pointer {
+	var uintPtr uintptr
+	switch ptrSize {
+	case 8: // 64 bit
+		uintPtr = uintptr(binary.LittleEndian.Uint64(in))
+	case 4: // 32 bit
+		uintPtr = uintptr(binary.LittleEndian.Uint32(in))
+	default:
+		log.Panicf("This architecture is not supported: %d", ptrSize)
+	}
+	return unsafe.Pointer(uintPtr)
+}
+
+// intSlice will give you back the integer value of the bytes in the slice you
+// provided.
+func intSlice(in []byte) int {
+	switch ptrSize {
+	case 8: // 64 bit
+		return int(binary.LittleEndian.Uint64(in))
+	case 4: // 32 bit
+		return int(binary.LittleEndian.Uint32(in))
+	}
+	log.Panicf("This architecture is not supported: %d", ptrSize)
+	return 0
+}
