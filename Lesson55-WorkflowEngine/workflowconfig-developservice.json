@@ -1,0 +1,44 @@
+{
+"workflowname" : "ruledevelopservice",
+"puprose": "....",
+"description": "....",
+"workflowstatetransitions": 
+    [
+        {
+            "fromstate": "_init",
+            "tostate": "rulerequestcreate",
+            "event": "initialize",
+            "executionunit" : {
+                "type": "function",
+                "functionname": "..."
+            },
+            "slapolicy": {},
+            "matchingpolicy":{}
+        },
+        {
+            "fromstate": "rulerequestcreate",
+            "tostate": "ruleassignuser",
+            "event": "next",
+            "executionunit" : {
+                "type": "function",
+                "functionname": "..."
+            },
+            "slapolicy": {},
+            "matchingpolicy":{}
+        },
+        {
+            "fromstate": "ruleassignuser",
+            "tostate": "ruleuploaddocument",
+            "event": "next",
+            "executionunit" : {
+                "type": "rule",
+                "ruleguid": "..."
+            },
+            "slapolicy": {},
+            "matchingpolicy":{}
+        }
+
+
+    ]
+	
+}
