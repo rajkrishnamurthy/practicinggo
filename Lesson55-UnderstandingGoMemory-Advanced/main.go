@@ -5,6 +5,7 @@ package main
 import (
 	"encoding/binary"
 	"encoding/hex"
+	"encoding/json"
 	"fmt"
 	"log"
 	"runtime"
@@ -12,7 +13,9 @@ import (
 	"unsafe"
 )
 
-func main() {
+var ptrSize int
+
+func mainBody1() {
 	// Let's print out architecture and pointer size. This will help us in
 	// understanding the memory layout later in the program.
 	fmt.Printf("architecture: %s\n", runtime.GOARCH)
@@ -150,9 +153,8 @@ func main() {
 	// https://github.com/golang/go/blob/a1c481d85139f77ab27210526f9dfa2f3b375ef9/src/runtime/slice.go#L13-L17
 	//
 	// What do you know, it is! So cool!
-}
 
-var ptrSize int
+}
 
 func rawAccess(p unsafe.Pointer, len int) []byte {
 	return (*(*[0xFF]byte)(p))[:len]
@@ -185,4 +187,52 @@ func intSlice(in []byte) int {
 	}
 	log.Panicf("This architecture is not supported: %d", ptrSize)
 	return 0
+}
+
+// DebugTaskHandler : Contains info on the local tasks that need to be debugged.
+// These tasks are expected to run on host.docker.internal or any endpoint that it is pointing to
+type DebugTaskHandler struct {
+	DebugFlag bool                     `json:"debugFlag"`
+	Tasks     map[string]LocalTaskInfo `json:"tasks"`
+}
+
+// LocalTaskInfo : Holds the task info for running the task in debug mode
+type LocalTaskInfo struct {
+	TaskName      string `json:"taskName"`
+	TaskPort      int    `json:"taskPort"`
+	TaskDebugHost string `json:"taskDebugHost"`
+}
+
+func test() {
+	debugRecords := DebugTaskHandler{
+		DebugFlag: true,
+		Tasks: map[string]LocalTaskInfo{
+			"c0f6d3f6-cfc0-bc80-9a01-000000000000": LocalTaskInfo{
+				TaskName:      "Task1_PurchaseOrderData",
+				TaskPort:      45002,
+				TaskDebugHost: "host.docker.internal",
+			},
+			"d0f6d3f6-cfc0-bc80-9a01-000000000000": LocalTaskInfo{
+				TaskName:      "Task2_PurchaseOrderData",
+				TaskPort:      45003,
+				TaskDebugHost: "host.docker.internal",
+			},
+			"e0f6d3f6-cfc0-bc80-9a01-000000000000": LocalTaskInfo{
+				TaskName:      "Task3_PurchaseOrderData",
+				TaskPort:      45004,
+				TaskDebugHost: "host.docker.internal",
+			},
+		},
+	}
+
+	if output, err := json.Marshal(&debugRecords); err != nil {
+		log.Fatal(err)
+	} else {
+		fmt.Printf("%s\n", output)
+	}
+
+}
+
+func main() {
+	test()
 }
