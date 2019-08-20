@@ -2,14 +2,23 @@ package main
 
 import (
 	"fmt"
+	"math/rand"
+	"time"
 
-	"github.com/r0fls/gostats"
+	stats "github.com/r0fls/gostats"
 )
 
 func main() {
 	ExampleFitBernoulli()
+	// BasicRandom()
 }
 
+func BasicRandom() {
+	randNo := rand.New(rand.NewSource(time.Now().Unix())).Intn(1000000)
+	fmt.Printf("%d", randNo)
+}
+
+// Library: stats "github.com/r0fls/gostats"
 func ExampleBernoulliRandom() {
 	stats.Seed()
 	b := stats.Bernoulli(.6)

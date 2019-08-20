@@ -12,13 +12,16 @@ import (
 	ldap "gopkg.in/ldap.v3"
 )
 
-var ldapHost = "129.146.97.33"
+// var ldapHost = "129.146.97.33"
+var ldapHost = "activedirectory.app.continube.live"
 var ldapPort = "389"
 
-var ldapUser = "rajkrishnamurthy@continube.com"
-
+// var ldapUser = "rajkrishnamurthy@continube.com"
 // var ldapUser = "dn: cn=ops,dc=continube,dc=com"
-var ldapPassword = `L3t5G0T0TheM00n`
+// var ldapPassword = `L3t5G0T0TheM00n`
+
+var ldapUser = "admin-testuser@continube.com"
+var ldapPassword = `$C0nt1Nub3123`
 
 //
 const (
