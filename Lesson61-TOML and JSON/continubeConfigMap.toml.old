@@ -1,0 +1,10 @@
+appGroupType="logical"
+[appGroupTags]
+    app=["ThreeWayMatching","demo","itscope"]
+[[apps]]
+    appTags.app=["odooapp"]
+    [[apps.servers]]
+        servername="test"
+        servertags.app=["odooserver"]
+        [[apps.servers.credential]]
+                otherCredInfoMap.Databasename="odoodb"

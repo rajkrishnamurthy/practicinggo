@@ -1,0 +1,58 @@
+appGroupName="%developerInputs%.%name%.string"
+appGroupType="logical"
+[appGroupTags]
+    app=["ThreeWayMatching","demo","itscope"]
+[[apps]]
+    appName="%developerInputs%.%repos%.[0]string"
+    appTags.app=["snyk"]
+    [[apps.credential]]
+        sourcetype="app"
+        credtags.jumphosttag=["snyk_jh"]
+        othercredinfomap.Github_URL="https://github.com/snyk/goof"
+        othercredinfomap.Snyk_APIToken="%developerInputs%.%licensekey%.[0]string"
+    [[apps.credential]]
+        sourcetype="app"
+        credtags.jumphosttag=["snyk_jh"]
+        othercredinfomap.Github_URL="https://github.com/snyk/goof"
+        othercredinfomap.Snyk_APIToken="%developerInputs%.%licensekey%.[1]string"
+    [[apps.credential]]
+        sourcetype="app"
+        credtags.jumphosttag=["snyk_jh"]
+        othercredinfomap.Github_URL="https://github.com/snyk/goof"
+        othercredinfomap.Snyk_APIToken="%developerInputs%.%licensekey%.[2]string"
+[[apps]]
+    appName="%developerInputs%.%repos%.[1]string"
+    appTags.app=["snyk"]
+    [[apps.credential]]
+        sourcetype="app"
+        credtags.jumphosttag=["snyk_jh"]
+        othercredinfomap.Github_URL="https://github.com/snyk/goof"
+        othercredinfomap.Snyk_APIToken="%developerInputs%.%licensekey%.[0]string"
+    [[apps.credential]]
+        sourcetype="app"
+        credtags.jumphosttag=["snyk_jh"]
+        othercredinfomap.Github_URL="https://github.com/snyk/goof"
+        othercredinfomap.Snyk_APIToken="%developerInputs%.%licensekey%.[1]string"
+    [[apps.credential]]
+        sourcetype="app"
+        credtags.jumphosttag=["snyk_jh"]
+        othercredinfomap.Github_URL="https://github.com/snyk/goof"
+        othercredinfomap.Snyk_APIToken="%developerInputs%.%licensekey%.[2]string"
+[[apps]]
+    appName="%developerInputs%.%repos%.[2]string"
+    appTags.app=["snyk"]
+    [[apps.credential]]
+        sourcetype="app"
+        credtags.jumphosttag=["snyk_jh"]
+        othercredinfomap.Github_URL="https://github.com/snyk/goof"
+        othercredinfomap.Snyk_APIToken="%developerInputs%.%licensekey%.string"
+    [[apps.credential]]
+        sourcetype="app"
+        credtags.jumphosttag=["snyk_jh"]
+        othercredinfomap.Github_URL="https://github.com/snyk/goof"
+        othercredinfomap.Snyk_APIToken="%developerInputs%.%licensekey%.[1]string"
+    [[apps.credential]]
+        sourcetype="app"
+        credtags.jumphosttag=["snyk_jh"]
+        othercredinfomap.Github_URL="https://github.com/snyk/goof"
+        othercredinfomap.Snyk_APIToken="%developerInputs%.%licensekey%.[2]string"

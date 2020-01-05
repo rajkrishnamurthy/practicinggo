@@ -1,0 +1,7 @@
+name = "testingAppGroup1"
+repos=[
+"github.com/repo1",
+"github.com/repo2",
+"github.com/repo3"
+]
+licensekey="pomsdfnlj90123"

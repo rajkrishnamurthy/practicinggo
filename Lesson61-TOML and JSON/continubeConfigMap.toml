@@ -1,0 +1,17 @@
+appGroupName="%developerInputs%.%name%.string"
+appGroupType="logical"
+[appGroupTags]
+    app=["ThreeWayMatching","demo","itscope"]
+[[apps]]
+    appName="%developerInputs%.%repos%.[]string"
+    appTags.app=["snyk"]
+    [[apps.credential]]
+        sourcetype="app"
+        credtags.jumphosttag=["snyk_jh"]
+        othercredinfomap.Github_URL="https://github.com/snyk/goof"
+        othercredinfomap.Snyk_APIToken="%developerInputs%.%licensekey%.string"
+    [[apps.otherinfo]
+        type="bhala"
+    [[app.servers]]
+        [osclusterinfo]
+            ipaddress="192.168.2.1"
