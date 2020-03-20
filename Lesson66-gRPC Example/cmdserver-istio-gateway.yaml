@@ -1,0 +1,33 @@
+apiVersion: networking.istio.io/v1alpha3
+kind: Gateway
+metadata:
+  namespace: istio-system
+  name: cmdserver-gateway
+spec:
+  selector:
+    istio: ingressgateway # use Istio default gateway implementation
+  servers:
+  - port:
+      number: 80
+      name: http
+      protocol: HTTP
+    hosts:
+    - "aks-stage.continube.live"
+---
+apiVersion: networking.istio.io/v1alpha3
+kind: VirtualService
+metadata:
+  namespace: istio-system
+  name: cmdserver-virtualservice
+spec:
+  hosts:
+  - aks-stage.continube.live
+  gateways:
+  - cmdserver-gateway
+  http:
+  - name: "httproutetocmdserver"
+    route:
+    - destination:
+        port:
+          number: 80
+        host: cmdserver.arul.svc.cluster.local   

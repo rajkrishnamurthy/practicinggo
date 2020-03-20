@@ -1,0 +1,34 @@
+appGroupName="User Application Group 1"
+appGroupType= "logical"
+[appGroupTags]
+    app=["ThreeWayMatching","demo","itscope"]
+[[apps]]
+    appName="Odoo CRM"
+    appurl="odoo.app.continube.live"
+    [apps.appTags]
+        app=["odoo"]
+    [[apps.servers]]
+        servername="odooapp"
+        [apps.servers.serverTags]
+            app=["odoo"]
+        [apps.servers.osinfo]
+        [apps.servers.clusterinfo]
+        [apps.servers.otherinfo]
+        [[apps.servers.credential]]
+            sourcetype="server"
+            userID="admin"
+            passwordstring="somethingsomething"
+            loginurl="http://odoo.app.continube.live:8069"
+            [apps.servers.credential.othercredinfomap]
+                DataBaseName="TestOdoo"
+[[apps]]
+    appName="fossa"
+    [apps.appTags]
+        app=["fossa"]
+    [[apps.credential]]
+        sourcetype="app"
+        [apps.credential.credtags]
+            jumphosttag=["fossa_jh"]
+        [apps.credential.othercredinfomap]
+            Fossa_APIToken="402160ca182c4835badc750662840a3b"
+            Github_URL="https://github.com/snyk/goof"

@@ -1,0 +1,38 @@
+apiVersion: v1
+kind: Service
+metadata:
+  namespace: arul
+  name: cmdclient
+spec:
+  selector:
+    app: cmdclient
+  ports:
+  - name: "80"
+    port: 80
+    targetPort: 80
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  namespace: arul
+  name: cmdclient
+spec:
+  selector:
+    matchLabels:
+      app: cmdclient
+  template:
+    metadata:
+      labels:
+        app: cmdclient
+    spec:
+      containers:
+      - name: cmdclient
+        image: continubestage.azurecr.io/continube-platform/cmdclient:alpine1.0
+        command: ["/bin/sh"]
+        args: ["-c", "while true; do echo hello; sleep 10;done"]
+        imagePullPolicy: Always
+        ports:
+        - containerPort: 80
+        resources: {}
+      restartPolicy: Always
+---

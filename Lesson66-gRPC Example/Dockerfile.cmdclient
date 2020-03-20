@@ -1,0 +1,15 @@
+FROM golang:1.13.1-stretch as builder
+LABEL Author="raj.krishnamurthy@continube.com"
+COPY cmdexecutor /go/src/cmdexecutor
+COPY cmdclient /go/src/cmdclient
+WORKDIR /go/src/cmdclient
+# Cannot do go mod tidy as there are no go code/dependencies present
+# RUN go mod tidy
+# RUN CGO_ENABLED=0 GOOS=linux go build -a -installsuffix cgo -o cmdclient .
+
+# FROM alpine:latest
+# RUN apk --no-cache add ca-certificates
+# RUN mkdir -p /continube/cmdclient
+# WORKDIR /continube/cmdclient
+# COPY --from=builder /go/src/cmdclient .
+# CMD ["/bin/sh","-c","/continube/cmdclient/cmdclient"]

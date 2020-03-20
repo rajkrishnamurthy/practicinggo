@@ -1,0 +1,12 @@
+version: "3.4"
+services: 
+  cmdserver:
+    build:
+      context: .
+      dockerfile: Dockerfile.cmdserver
+    image: cmdserver:1.00
+  cmdclient:
+    build:
+      context: .
+      dockerfile: Dockerfile.cmdclient
+    image: cmdclient:1.00

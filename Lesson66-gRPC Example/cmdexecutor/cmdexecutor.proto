@@ -1,0 +1,24 @@
+syntax = "proto3";
+
+/* CommandExecutor is used to execute the commands from the client system. */
+service CommandExecutor {
+    rpc Execute(stream Command) returns (stream CommandOutput) {}
+}
+
+/* Command is the message which will contains the commands from the client system. */
+message Command {
+    string cmd=1;
+    repeated string args=2;
+    string fetch_obj_to_be_returned=3; // Object=FILE||FOLDER
+    string fetch_file_or_folder_path=4;
+}
+
+
+/* CommandOutput will return the output based on the input values */
+message CommandOutput {
+    string message=1;
+    int32 error_code=2;
+    bytes cmd_output=3;
+    string output_type=5; // 
+    string src_fq_path=4;
+}

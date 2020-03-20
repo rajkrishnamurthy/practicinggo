@@ -1,0 +1,29 @@
+FROM golang:1.13.1-stretch as builder1
+LABEL Author="raj.krishnamurthy@continube.com"
+COPY cmdexecutor /go/src/cmdexecutor
+COPY cmdserver /go/src/cmdserver
+WORKDIR /go/src/cmdserver
+# Cannot do go mod tidy as there are no go code/dependencies present
+RUN go mod tidy
+RUN CGO_ENABLED=0 GOOS=linux go build -a -installsuffix cgo -o cmdserver .
+
+FROM golang:1.13.1-stretch as builder2
+RUN mkdir -p /go/src/github.com/aquasecurity && \
+    cd /go/src/github.com/aquasecurity && \
+    git clone https://github.com/aquasecurity/trivy && \    
+    cd trivy/cmd/trivy/ && \
+    go mod tidy
+RUN CGO_ENABLED=0 GOOS=linux go build -a -installsuffix cgo -o trivy .
+
+FROM alpine:latest
+RUN apk --no-cache add ca-certificates
+
+RUN mkdir -p /continube/tools
+WORKDIR /continube/tools
+COPY --from=builder2 /go/src/github.com/aquasecurity/trivy/cmd/trivy .
+RUN PATH=$PATH:/go/src/github.com/aquasecurity/trivy/cmd/trivy/
+
+RUN mkdir -p /continube/cmdserver
+WORKDIR /continube/cmdserver
+COPY --from=builder1 /go/src/cmdserver .
+CMD ["/bin/sh","-c","/continube/cmdserver/cmdserver"]

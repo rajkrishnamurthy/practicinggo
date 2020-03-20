@@ -1,0 +1,15 @@
+appGroupName="%developerInputs%.name"
+appGroupType="logical"
+[appGroupTags]
+    app=["ThreeWayMatching","demo","itscope"]
+[[apps]]
+    appName="%developerInputs%.repos"
+    [apps.appTags]
+        app=["snyk"]
+    [[apps.credential]]
+        sourcetype="app"
+        [apps.credential.credtags]
+            jumphosttag=["snyk_jh"]
+        [apps.credential.othercredinfomap]
+            Github_URL="%developerInputs%.repos"
+            Snyk_APIToken="%developerInputs%.licensekey"
