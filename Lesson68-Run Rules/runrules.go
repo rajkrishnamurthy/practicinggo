@@ -59,7 +59,7 @@ func main() {
 	// os.Args[1]
 	rulerunner := &ruleRunner{}
 	rulerunner.loginType = &loginType{
-		loginHost:     "cnreverseproxy",
+		loginHost:     "aks-stage.continube.live",
 		loginUser:     "raj@fabrikam.com",
 		loginPassword: "\\$C0nt1Nub3123",
 	}
