@@ -1,0 +1,180 @@
+Waiting for AAD role to propagate
+AAD role propagation done[############################################]  100.0000%AAD role propagation done
+{
+  "aadProfile": {
+    "adminGroupObjectIds": [
+      "db22c6a8-7196-404e-aeff-21bb91a541c3"
+    ],
+    "clientAppId": null,
+    "enableAzureRbac": false,
+    "managed": true,
+    "serverAppId": null,
+    "serverAppSecret": null,
+    "tenantId": "129cfed1-8fe6-4573-912c-f7b4ab9c9e82"
+  },
+  "addonProfiles": {
+    "ingressApplicationGateway": {
+      "config": {
+        "applicationGatewayId": "/subscriptions/207768eb-529f-4666-8b00-85b26be2e9fb/resourceGroups/cn-prod-dmz-1.0/providers/Microsoft.Network/applicationGateways/cn-prod-appgw-1.0",
+        "effectiveApplicationGatewayId": "/subscriptions/207768eb-529f-4666-8b00-85b26be2e9fb/resourceGroups/cn-prod-dmz-1.0/providers/Microsoft.Network/applicationGateways/cn-prod-appgw-1.0"
+      },
+      "enabled": true,
+      "identity": {
+        "clientId": "1d76f701-0f0f-4b77-ab94-e31e58727597",
+        "objectId": "133e4a24-f9b7-4b31-9c2a-ecc3afa248a8",
+        "resourceId": "/subscriptions/207768eb-529f-4666-8b00-85b26be2e9fb/resourcegroups/MC_cn-prod-aks_cn-prod-aks-cn_westus2/providers/Microsoft.ManagedIdentity/userAssignedIdentities/ingressapplicationgateway-cn-prod-aks-cn"
+      }
+    }
+  },
+  "agentPoolProfiles": [
+    {
+      "availabilityZones": null,
+      "count": 2,
+      "enableAutoScaling": null,
+      "enableEncryptionAtHost": false,
+      "enableFips": false,
+      "enableNodePublicIp": false,
+      "gpuInstanceProfile": null,
+      "kubeletConfig": null,
+      "kubeletDiskType": "OS",
+      "linuxOsConfig": null,
+      "maxCount": null,
+      "maxPods": 30,
+      "minCount": null,
+      "mode": "System",
+      "name": "nodepool1",
+      "nodeImageVersion": "AKSUbuntu-1804gen2containerd-2021.06.02",
+      "nodeLabels": {},
+      "nodePublicIpPrefixId": null,
+      "nodeTaints": null,
+      "orchestratorVersion": "1.20.7",
+      "osDiskSizeGb": 128,
+      "osDiskType": "Managed",
+      "osSku": "Ubuntu",
+      "osType": "Linux",
+      "podSubnetId": null,
+      "powerState": {
+        "code": "Running"
+      },
+      "provisioningState": "Succeeded",
+      "proximityPlacementGroupId": null,
+      "scaleSetEvictionPolicy": null,
+      "scaleSetPriority": null,
+      "spotMaxPrice": null,
+      "tags": null,
+      "type": "VirtualMachineScaleSets",
+      "upgradeSettings": null,
+      "vmSize": "Standard_DS2_v2",
+      "vnetSubnetId": "/subscriptions/207768eb-529f-4666-8b00-85b26be2e9fb/resourceGroups/cn-prod-vnet-group-1.0/providers/Microsoft.Network/virtualNetworks/cn-prod-aks-vnet-1.0/subnets/cn-prod-aks-cn-subnet-1.0"
+    }
+  ],
+  "apiServerAccessProfile": {
+    "authorizedIpRanges": null,
+    "enablePrivateCluster": true,
+    "privateDnsZone": "system"
+  },
+  "autoScalerProfile": null,
+  "autoUpgradeProfile": null,
+  "azurePortalFqdn": "ebfc52d54f588ec36c12b28064c0abe3-priv.portal.hcp.westus2.azmk8s.io",
+  "disableLocalAccounts": false,
+  "diskEncryptionSetId": null,
+  "dnsPrefix": "cn-prod-ak-cn-prod-aks-207768",
+  "enablePodSecurityPolicy": false,
+  "enableRbac": true,
+  "extendedLocation": null,
+  "fqdn": null,
+  "fqdnSubdomain": null,
+  "httpProxyConfig": null,
+  "id": "/subscriptions/207768eb-529f-4666-8b00-85b26be2e9fb/resourcegroups/cn-prod-aks/providers/Microsoft.ContainerService/managedClusters/cn-prod-aks-cn",
+  "identity": {
+    "principalId": "c0866261-94a3-44db-aa6a-c52ba7a189d0",
+    "tenantId": "129cfed1-8fe6-4573-912c-f7b4ab9c9e82",
+    "type": "SystemAssigned",
+    "userAssignedIdentities": null
+  },
+  "identityProfile": {
+    "kubeletidentity": {
+      "clientId": "c6a0b350-a71e-47cf-aa70-377403f6efdd",
+      "objectId": "a4c6d995-fa2a-463d-9b64-eaede54d185c",
+      "resourceId": "/subscriptions/207768eb-529f-4666-8b00-85b26be2e9fb/resourcegroups/MC_cn-prod-aks_cn-prod-aks-cn_westus2/providers/Microsoft.ManagedIdentity/userAssignedIdentities/cn-prod-aks-cn-agentpool"
+    }
+  },
+  "kubernetesVersion": "1.20.7",
+  "linuxProfile": {
+    "adminUsername": "azureuser",
+    "ssh": {
+      "publicKeys": [
+        {
+          "keyData": "ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAABAQC+a2SFGTvyy9Q8GA2UXYBl+ioCeZ4cqL+bT5/a0SQEWxz+IdBY+kGPXa30yefLrc1G42aAFBL94I0lLWj4KG55joveeEmJkKXYS9GiW8Kr5FJEaC+Z4sYJtyRgq235NddHvlS0+VIwmQNCQe4GRyTC06Kgo0AIcHhGvu0Bw/2X1C7Mqe/P4bSmrN467SJvAHWCrM+3a/wUqmMsNNB5CrbZbdA77I4+uYIBCWoMl/0UjUjY9Aefxa7O9lZMRM1ffXkX5iJmzdm8Ep2sstMI+pqMVEZwIX81Pu0D0rfgQUhL9pZ+f9Nv6qhjiKG/PJGf31s+eNjrmDdRirRgVpcSpN4r rajkrishnamurthy@continubemacpro.lan\n"
+        }
+      ]
+    }
+  },
+  "location": "westus2",
+  "maxAgentPools": 100,
+  "name": "cn-prod-aks-cn",
+  "networkProfile": {
+    "dnsServiceIp": "10.2.0.10",
+    "dockerBridgeCidr": "172.17.0.1/16",
+    "loadBalancerProfile": {
+      "allocatedOutboundPorts": null,
+      "effectiveOutboundIps": [
+        {
+          "id": "/subscriptions/207768eb-529f-4666-8b00-85b26be2e9fb/resourceGroups/MC_cn-prod-aks_cn-prod-aks-cn_westus2/providers/Microsoft.Network/publicIPAddresses/d5f367f4-a7f4-4764-a359-73d23b6c89da",
+          "resourceGroup": "MC_cn-prod-aks_cn-prod-aks-cn_westus2"
+        }
+      ],
+      "idleTimeoutInMinutes": null,
+      "managedOutboundIps": {
+        "count": 1
+      },
+      "outboundIpPrefixes": null,
+      "outboundIps": null
+    },
+    "loadBalancerSku": "Standard",
+    "networkMode": null,
+    "networkPlugin": "azure",
+    "networkPolicy": null,
+    "outboundType": "loadBalancer",
+    "podCidr": null,
+    "serviceCidr": "10.2.0.0/24"
+  },
+  "nodeResourceGroup": "MC_cn-prod-aks_cn-prod-aks-cn_westus2",
+  "podIdentityProfile": null,
+  "powerState": {
+    "code": "Running"
+  },
+  "privateFqdn": "cn-prod-ak-cn-prod-aks-207768-74e3783c.67741981-10d7-4337-88e2-602b86dc166e.privatelink.westus2.azmk8s.io",
+  "privateLinkResources": [
+    {
+      "groupId": "management",
+      "id": "/subscriptions/207768eb-529f-4666-8b00-85b26be2e9fb/resourcegroups/cn-prod-aks/providers/Microsoft.ContainerService/managedClusters/cn-prod-aks-cn/privateLinkResources/management",
+      "name": "management",
+      "privateLinkServiceId": null,
+      "requiredMembers": [
+        "management"
+      ],
+      "resourceGroup": "cn-prod-aks",
+      "type": "Microsoft.ContainerService/managedClusters/privateLinkResources"
+    }
+  ],
+  "provisioningState": "Succeeded",
+  "resourceGroup": "cn-prod-aks",
+  "servicePrincipalProfile": {
+    "clientId": "msi",
+    "secret": null
+  },
+  "sku": {
+    "name": "Basic",
+    "tier": "Free"
+  },
+  "tags": null,
+  "type": "Microsoft.ContainerService/ManagedClusters",
+  "windowsProfile": {
+    "adminPassword": null,
+    "adminUsername": "azureuser",
+    "enableCsiProxy": true,
+    "licenseType": null
+  }
+}
+Command ran in 125.770 seconds (init: 0.129, invoke: 125.641)

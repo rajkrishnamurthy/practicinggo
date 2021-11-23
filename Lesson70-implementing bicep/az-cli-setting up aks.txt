@@ -1,0 +1,249 @@
+
+# https://denniszielke.medium.com/securing-ingress-with-azureappgateway-and-egress-traffic-with-azurefirewall-for-azure-kubernetes-41af94051347
+# https://techcommunity.microsoft.com/t5/itops-talk-blog/how-to-query-azure-resources-using-the-azure-cli/ba-p/360147
+
+
+# Setting up environment variables
+#-------------------------------------
+SUBSCRIPTION_ID="207768eb-529f-4666-8b00-85b26be2e9fb" # This points to the Azure Sponsorship subcription
+LOCATION="westus2" # We will use southindia for dev instances
+TENANT_ID="129cfed1-8fe6-4573-912c-f7b4ab9c9e82"
+
+# Keeping all networking within a specific resource group
+#-------------------------------------
+PROD_VNET_GROUP="cn-prod-vnet-group-1.0" # here enter the network resource group name
+PROD_DMZ_GROUP="cn-prod-dmz-1.0"
+PROD_AKS_GROUP="cn-prod-aks" # cluster1: preview.continube.live, partner.continube.live; cluster2: preview.compliancecow.live, privacybison.com
+DEV_AKS_GROUP="cn-dev-aks" # cluster1: test.continube.live, dev.continube.live; cluster2: test.compliancecow.live, dev.compliancecow.live
+PROD_SITE_GROUP="cn-prod-site" # cluster1: compliancecow.com, continube.com
+
+PROD_HUB_VNET="cn-prod-dmz-vnet-1.0" # here enter the name of your hub net 
+PROD_HUB_VNET_IP_SEG="10.1.0.0/16"
+
+PROD_HUB_FW_SUBNET_IP_SEG="10.1.10.0/24"
+
+PROD_HUB_APPGW_SUBNET="cn-prod-dmz-subnet-1.0" # name of AppGW subnet APPGW_SUBNET_NAME
+PROD_HUB_APPGW_SUBNET_IP_SEG="10.1.11.0/24"
+
+PROD_HUB_BASTION_SUBNET="10.1.12.0/24"
+
+PROD_AKS_VNET="cn-prod-aks-vnet-1.0" # here enter the name of your k8s vnet 
+PROD_AKS_VNET_IP_SEG="10.2.0.0/16" 
+
+PROD_AKS_CN_SUBNET="cn-prod-aks-cn-subnet-1.0"  # Subnet holding ContiNube cluster 
+PROD_AKS_CN_SUBNET_IP_SEG="10.2.16.0/20" # 4094 Ip addresses 10.2.16.1 - 10.2.31.254
+PROD_AKS_CN_SERVICE_CIDR="10.2.16.0/21" # 2046 Ip addresses 10.2.16.1 - 10.2.23.254
+
+PROD_AKS_COW_SUBNET="cn-prod-aks-cow-subnet-1.0"  # KUBE_AGENT_SUBNET_NAME
+PROD_AKS_COW_SUBNET_IP_SEG="10.2.32.0/20" # 4094 Ip addresses 10.2.32.1 - 10.2.47.254
+PROD_AKS_COW_SERVICE_CIDR="10.2.32.0/21" # 2046 Ip addresses 10.2.32.1 - 10.2.39.254
+
+PROD_AKS_VNET_ID="/subscriptions/$SUBSCRIPTION_ID/resourceGroups/$PROD_VNET_GROUP/providers/Microsoft.Network/virtualNetworks/$PROD_AKS_VNET"
+PROD_AKS_CN_SUBNET_ID="/subscriptions/$SUBSCRIPTION_ID/resourceGroups/$PROD_VNET_GROUP/providers/Microsoft.Network/virtualNetworks/$PROD_AKS_VNET/subnets/$PROD_AKS_CN_SUBNET"
+
+PROD_HUB_VNET_ID="/subscriptions/$SUBSCRIPTION_ID/resourceGroups/$PROD_VNET_GROUP/providers/Microsoft.Network/virtualNetworks/$PROD_HUB_VNET"
+PROD_HUB_APPGW_SUBNET_ID="/subscriptions/$SUBSCRIPTION_ID/resourceGroups/$PROD_VNET_GROUP/providers/Microsoft.Network/virtualNetworks/$PROD_HUB_VNET/subnets/$PROD_HUB_APPGW_SUBNET"
+
+
+# Name resources
+#-------------------------------------
+PROD_HUB_FW="cn-prod-firewall-1.0" # name of your azure firewall resource PROD_HUB_FW
+PROD_HUB_APPGW="cn-prod-appgw-1.0" # APPGW_NAME
+
+PROD_HUB_BASTION="cn-prod-bastion"
+
+PROD_AKS_CN_CLUSTER="cn-prod-aks-cn"
+PROD_AKS_COW_CLUSTER="cn-prod-aks-cow" 
+PROD_AKS_CLUSTER_VERSION="1.20.7" 
+PROD_AKS_CNI_PLUGIN="azure" # alternative is "kubenet" # KUBE_CNI_PLUGIN
+
+
+# Create resource groups
+#-------------------------------------
+az group create -n $PROD_VNET_GROUP -l $LOCATION # create the resource group that holds all VNET resources
+az group create -n $PROD_AKS_GROUP -l $LOCATION  # create the resource group that holds AKS resources
+az group create -n $PROD_DMZ_GROUP -l $LOCATION # create the resource group that holds Application Gateway and Firewall resources
+
+# Setup networks
+#-------------------------------------
+az network vnet create -g $PROD_VNET_GROUP -n $PROD_HUB_VNET --address-prefixes $PROD_HUB_VNET_IP_SEG
+az network vnet create -g $PROD_VNET_GROUP -n $PROD_AKS_VNET --address-prefixes $PROD_AKS_VNET_IP_SEG
+
+az network vnet subnet create -g $PROD_VNET_GROUP --vnet-name $PROD_HUB_VNET -n AzureFirewallSubnet --address-prefix $PROD_HUB_FW_SUBNET_IP_SEG    
+az network vnet subnet create -g $PROD_VNET_GROUP --vnet-name $PROD_HUB_VNET -n AzureBastionSubnet --address-prefix $PROD_HUB_BASTION_SUBNET
+
+az network vnet subnet create -g $PROD_VNET_GROUP --vnet-name $PROD_HUB_VNET -n $PROD_HUB_APPGW_SUBNET --address-prefix $PROD_HUB_APPGW_SUBNET_IP_SEG
+
+az network vnet subnet create -g $PROD_VNET_GROUP --vnet-name $PROD_AKS_VNET -n $PROD_AKS_CN_SUBNET --address-prefix $PROD_AKS_CN_SUBNET_IP_SEG 
+az network vnet subnet create -g $PROD_VNET_GROUP --vnet-name $PROD_AKS_VNET -n $PROD_AKS_COW_SUBNET --address-prefix $PROD_AKS_COW_SUBNET_IP_SEG 
+
+az network vnet peering create -g $PROD_VNET_GROUP -n hubtoaks1 --vnet-name $PROD_HUB_VNET --remote-vnet $PROD_AKS_VNET --allow-vnet-access
+az network vnet peering create -g $PROD_VNET_GROUP -n akstohub1 --vnet-name $PROD_AKS_VNET --remote-vnet $PROD_HUB_VNET --allow-vnet-access
+
+# Setup Bastion in the HUB 
+#-------------------------------------
+# Bastion requires a HARDCODED SUBNET "AzureBastionSubnet"
+az network public-ip create --resource-group $PROD_DMZ_GROUP --name $PROD_HUB_BASTION-publicip --sku Standard --location $LOCATION
+az network bastion create --name $PROD_HUB_BASTION --public-ip-address $PROD_HUB_BASTION-publicip --resource-group $PROD_DMZ_GROUP --vnet-name $PROD_HUB_VNET --location $LOCATION
+
+
+# Setup Application Gateway in the HUB 
+#-------------------------------------
+az network public-ip create --resource-group $PROD_DMZ_GROUP --name $PROD_HUB_APPGW-publicip --sku Standard
+PROD_HUB_APPGW_PUBLIC_IP=$(az network public-ip show --resource-group $PROD_DMZ_GROUP --name $PROD_HUB_APPGW-publicip --query ipAddress)
+
+az network application-gateway create \
+--name $PROD_HUB_APPGW \
+--resource-group $PROD_DMZ_GROUP \
+--location $LOCATION \
+--sku Standard_v2 \
+--public-ip-address $PROD_HUB_APPGW-publicip \
+--vnet-name $PROD_HUB_VNET_ID \
+--subnet $PROD_HUB_APPGW_SUBNET_ID
+
+PROD_HUB_APPGW_ID=$(az network application-gateway show --name $PROD_HUB_APPGW --resource-group $PROD_DMZ_GROUP -o tsv --query "id") 
+
+# Private IP not applicable. This is not similar to the firewall Private IP that you can use UDR to route from aks to firewall for egress
+# PROD_HUB_APPGW_PRIVATE_IP=$(az network application-gateway show  --name $PROD_HUB_APPGW --resource-group $PROD_DMZ_GROUP --query "ipConfigurations[0].privateIpAddress" -o tsv)
+
+
+# Setup Firewall in the hub and connect it to Log Workspace
+#-------------------------------------
+az extension add --name azure-firewall
+az network public-ip create -g $PROD_VNET_GROUP -n $PROD_HUB_FW-publicip --sku Standard
+PROD_HUB_FW_PUBLIC_IP=$(az network public-ip show -g $PROD_VNET_GROUP -n $PROD_HUB_FW-publicip --query ipAddress)
+az network firewall create --name $PROD_HUB_FW --resource-group $PROD_VNET_GROUP --location $LOCATION
+az network firewall ip-config create --firewall-name $PROD_HUB_FW --name $PROD_HUB_FW --public-ip-address $PROD_HUB_FW-publicip --resource-group $PROD_VNET_GROUP --vnet-name $PROD_HUB_VNET
+PROD_HUB_FW_PRIVATE_IP=$(az network firewall show -g $PROD_VNET_GROUP -n $PROD_HUB_FW --query "ipConfigurations[0].privateIpAddress" -o tsv)
+az monitor log-analytics workspace create --resource-group $PROD_VNET_GROUP --workspace-name $PROD_HUB_FW-logworkspace --location $LOCATION
+
+# Setup routes to the firewall
+#-------------------------------------
+PROD_AKS_VNET_ID="/subscriptions/$SUBSCRIPTION_ID/resourceGroups/$PROD_VNET_GROUP/providers/Microsoft.Network/virtualNetworks/$PROD_AKS_VNET"
+PROD_AKS_CN_SUBNET_ID="/subscriptions/$SUBSCRIPTION_ID/resourceGroups/$PROD_VNET_GROUP/providers/Microsoft.Network/virtualNetworks/$PROD_AKS_VNET/subnets/$PROD_AKS_CN_SUBNET"
+
+az network route-table create -g $PROD_VNET_GROUP --name $PROD_AKS_CLUSTER-routetable
+az network route-table route create --resource-group $PROD_VNET_GROUP --name $PROD_HUB_FW --route-table-name $PROD_AKS_CLUSTER-routetable --address-prefix 0.0.0.0/0 --next-hop-type VirtualAppliance --next-hop-ip-address $PROD_HUB_FW_PRIVATE_IP
+az network vnet subnet update --route-table $PROD_AKS_CLUSTER-routetable --ids $PROD_AKS_CN_SUBNET
+az network route-table route list --resource-group $PROD_VNET_GROUP --route-table-name $PROD_AKS_CLUSTER-routetable
+
+# Setup Firewall rules
+#-------------------------------------
+az network firewall network-rule create --firewall-name $PROD_HUB_FW --resource-group $PROD_VNET_GROUP --collection-name "time" --destination-addresses "*"  --destination-ports 123 --name "allow network" --protocols "UDP" --source-addresses "*" --action "Allow" --description "aks node time sync rule" --priority 101
+az network firewall network-rule create --firewall-name $PROD_HUB_FW --resource-group $PROD_VNET_GROUP --collection-name "dns" --destination-addresses "*"  --destination-ports 53 --name "allow network" --protocols "Any" --source-addresses "*" --action "Allow" --description "aks node dns rule" --priority 102
+az network firewall network-rule create --firewall-name $PROD_HUB_FW --resource-group $PROD_VNET_GROUP --collection-name "servicetags" --destination-addresses "AzureContainerRegistry" "MicrosoftContainerRegistry" "AzureActiveDirectory" "AzureMonitor" --destination-ports "*" --name "allow service tags" --protocols "Any" --source-addresses "*" --action "Allow" --description "allow service tags" --priority 110
+az network firewall network-rule create --firewall-name $PROD_HUB_FW --resource-group $PROD_VNET_GROUP --collection-name "hcp" --destination-addresses "AzureCloud.$LOCATION" --destination-ports "1194" --name "allow master tags" --protocols "UDP" --source-addresses "*" --action "Allow" --description "allow aks link access to masters" --priority 120
+az network firewall application-rule create --firewall-name $PROD_HUB_FW --resource-group $PROD_VNET_GROUP --collection-name 'aksfwar' -n 'fqdn' --source-addresses '*' --protocols 'http=80' 'https=443' --fqdn-tags "AzureKubernetesService" --action allow --priority 101
+az network firewall application-rule create  --firewall-name $PROD_HUB_FW --resource-group $PROD_VNET_GROUP --collection-name "osupdates" --name "allow network" --protocols http=80 https=443 --source-addresses "*"  --action "Allow" --target-fqdns "download.opensuse.org" "security.ubuntu.com" "packages.microsoft.com" "azure.archive.ubuntu.com" "changelogs.ubuntu.com" "snapcraft.io" "api.snapcraft.io" "motd.ubuntu.com"  --priority 102
+
+# Setup access to docker hub for demo purposes. Remove later
+az network firewall application-rule create  --firewall-name $PROD_HUB_FW --resource-group $PROD_VNET_GROUP --collection-name "dockerhub" --name "allow network" --protocols http=80 https=443 --source-addresses "*"  --action "Allow" --target-fqdns "*auth.docker.io" "*cloudflare.docker.io" "*cloudflare.docker.com" "*registry-1.docker.io" --priority 200
+
+# Create/Set Security Groups
+#-------------------------------------
+# set up security groups: prod-cn-admin, prod-cow-admin, prod-site-admin for administering ContiNube, ComplianceCow and Site clusters respectively
+PROD_AD_CN_ADMIN="prod-cn-admin"
+PROD_AD_COW_ADMIN="prod-cow-admin"
+PROD_AD_SITE_ADMIN="prod-site-admin"
+
+PROD_AD_CN_ADMIN_ID=$(az ad group list --query "[?contains(displayName, 'prod-cn-admin')].[objectId]" --output tsv)
+PROD_AD_COW_ADMIN_ID=$(az ad group list --query "[?contains(displayName, 'prod-cow-admin')].[objectId]" --output tsv) 
+PROD_AD_SITE_ADMIN_ID=$(az ad group list --query "[?contains(displayName, 'prod-site-admin')].[objectId]" --output tsv) 
+
+# Get ACR Info
+#-------------------------------------
+PROD_ACR_CN="continube.azurecr.io"
+PROD_ACR_COW="continube.azurecr.io"
+PROD_ACR_SITE="continube.azurecr.io"
+
+PROD_ACR_CN_ID=$(az acr show --name $PROD_ACR_CN --subscription $SUBSCRIPTION_ID --query "id" --output tsv)
+PROD_ACR_COW_ID=$(az acr show --name $PROD_ACR_COW --subscription $SUBSCRIPTION_ID --query "id" --output tsv)
+PROD_ACR_SITE_ID=$(az acr show --name $PROD_ACR_SITE --subscription $SUBSCRIPTION_ID --query "id" --output tsv)
+
+
+# Setup Private AKS Cluster
+#-------------------------------------
+# az cli help: https://docs.microsoft.com/en-us/cli/azure/aks?view=azure-cli-latest#az_aks_create
+
+# Register for AAD-V2
+az feature register --name AAD-V2 --namespace Microsoft.ContainerService 
+az feature list -o table --query "[?contains(name, 'Microsoft.ContainerService/AAD-V2')].{Name:name,State:properties.state}" 
+# Once the feature is "registered" use the following command
+az provider register --namespace Microsoft.ContainerService 
+
+az aks create \
+--name $PROD_AKS_CN_CLUSTER \
+--resource-group $PROD_AKS_GROUP \
+--location $LOCATION \
+--aad-admin-group-object-ids $PROD_AD_CN_ADMIN_ID \
+--attach-acr $PROD_ACR_CN_ID \
+--enable-aad \
+--enable-managed-identity \
+--enable-private-cluster \
+--enable-rbac \
+--private-dns-zone system \
+--node-count 2 \
+--network-plugin $PROD_AKS_CNI_PLUGIN \
+--vnet-subnet-id $PROD_AKS_CN_SUBNET_ID \
+--docker-bridge-address 172.17.0.1/16 \
+--dns-service-ip 10.2.0.10 \
+--service-cidr 10.2.0.0/24 \
+--load-balancer-sku standard \
+--outbound-type userDefinedRouting \
+--kubernetes-version $PROD_AKS_CLUSTER_VERSION 
+
+az aks enable-addons --name $PROD_AKS_CN_CLUSTER --resource-group $PROD_AKS_GROUP --addons ingress-appgw --appgw-id $PROD_HUB_APPGW_ID --verbose
+
+
+# Get the MC_ resource group and the Private DNS Zone
+PROD_AKS_NODE_GROUP=$(az aks show --name $PROD_AKS_CN_CLUSTER --resource-group $PROD_AKS_GROUP --query nodeResourceGroup --output tsv)
+PROD_AKS_PRIVATE_DNS_ZONE=$(az network private-dns zone list --resource-group $PROD_AKS_NODE_GROUP --query "[0].name" --output tsv)
+
+# List the Private DNS Zones in the MC_ resource group
+az network private-dns link vnet list --resource-group $PROD_AKS_NODE_GROUP --zone-name $PROD_AKS_PRIVATE_DNS_ZONE
+
+PROD_HUB_JUMPHOST="cn-prod-jumphost"
+
+
+# Attach the DNS to the JUMPHOST VM Network
+az network private-dns link vnet create \
+--name $PROD_HUB_JUMPHOST-link \
+--resource-group $PROD_AKS_NODE_GROUP \
+--virtual-network $PROD_HUB_VNET_ID \
+--zone-name $PROD_AKS_PRIVATE_DNS_ZONE \
+--registration-enabled false
+
+
+
+# Access cluster, deploy sample app and test
+#-------------------------------------
+az aks get-credentials --name $PROD_AKS_CN_CLUSTER --resource-group $PROD_AKS_GROUP
+kubectl apply -f https://raw.githubusercontent.com/Azure/application-gateway-kubernetes-ingress/master/docs/examples/aspnetapp.yaml
+kubectl get ingress
+
+# Check egress IP
+#-------------------------------------
+kubectl run -it --rm aks-ip --image=mcr.microsoft.com/aks/fundamental/base-ubuntu:v0.0.11
+apt-get update && apt-get install curl -y
+curl -s checkip.dyndns.org
+#------------------------
+
+
+
+
+
+# The END
+
+--enable-rbac \
+--appgw-id $PROD_HUB_APPGW_ID \
+--aad-tenant-id $TENANT_ID \ 
+--enable-cluster-autoscaler \
+--min-count 2 \
+--max-count 5 \
+--ssh-key-value /path/to/publickey \
+--admin-username -u continube \
+--load-balancer-outbound-ips <ip-resource-id-1,ip-resource-id-2> \
+--assign-identity <ResourceId> \ 
+
+
+az aks check-acr --name MyManagedCluster --resource-group MyResourceGroup --acr myacr.azurecr.io
